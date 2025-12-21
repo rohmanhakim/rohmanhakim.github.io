@@ -1,6 +1,6 @@
 ---
 title: "Migrating Vidio’s Transcoding System to GKE: A Retrospective"
-date: 2025-12-21
+date: 2025-12-20
 draft: false
 ---
 ***Disclaimer:** This article is a personal retrospective reconstructed from my own memory. At the time of writing, I no longer have access to Vidio’s internal documentation, source code, or design artifacts. Where exact details are uncertain, I intentionally use probabilistic language to reflect the limits of recall. The purpose of this writing is not to provide a precise historical record, but to reflect on the system, the migration process, and the engineering trade-offs involved during my time on Vidio’s video infra team.*
