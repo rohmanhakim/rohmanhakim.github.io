@@ -4,6 +4,12 @@ title: "About Me"
 
 Hi I'm Arif. This is where I write my thoughts and something I stumbled upon when I'm working and tinkering. 
 
-You can also see some of [my projects](/projects) that I made.
+I’m a software engineer with over eight years of experience working on backend systems, infrastructure, and media platforms. I’ve spent much of my career building and maintaining systems that run behind the scenes: the kind that need to be reliable, understandable, and easy for teams to work with over time.
 
-Thanks for visiting and reading!
+I’ve worked across a mix of roles and environments, from mobile engineering to backend and platform work, often sitting at the intersection between product needs and operational reality. Along the way, I’ve helped build internal platforms, migrated legacy systems, and supported large-scale media workflows like video transcoding and content protection. What I enjoy most is understanding how a system fits together as a whole, not just how it works, but why it was designed that way and how people interact with it day to day.
+
+I’m naturally drawn to problems involving system design, developer experience, and long-lived infrastructure. I care a lot about clarity: clear interfaces, clear documentation, and designs that make the “right” way of doing things easier than the wrong one. I believe good engineering is as much about reducing cognitive load as it is about writing correct code.
+
+This site is a place where I share what I’m learning, reflect on past projects, and think out loud about software engineering topics that interest me, especially distributed systems, media infrastructure, and tooling for developers. Writing helps me slow down, make sense of complex systems, and hopefully leave something useful for others along the way.
+
+At this point in my career, I’m focusing on sustainable growth and thoughtful work. I’m interested in environments that value curiosity, care, and long-term thinking, and in projects where building things well matters as much as building them quickly.
