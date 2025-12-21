@@ -1,0 +1,36 @@
+<script>
+  const btnSwitchTheme = document.getElementById("btn-switch-theme")
+
+  function getTheme() {
+    const cookies = Object.fromEntries(
+      document.cookie.split("; ").map(c => c.split("="))
+    );
+    return cookies.theme || "light";
+  }
+
+  function invertTheme(theme) {
+    return theme == "light" ? "dark" : "light"
+  }
+
+  function applyTheme(toTheme) {
+    btnSwitchTheme.textContent = "Switch to " + invertTheme(toTheme) + " theme"
+    document.querySelector("html").style = toTheme == "dark" ? "filter: invert(1);" : ""
+    neuralizeChildrenColor("img", toTheme)
+    neuralizeChildrenColor(".highlight", toTheme)
+  }
+
+  function neuralizeChildrenColor(child, toTheme) {
+    document.querySelectorAll(child).forEach(el => {
+      el.style = toTheme == "dark" ? "filter: invert(1);" : ""
+    })
+  }
+
+  btnSwitchTheme.addEventListener("click", (event) => {
+    const theme = getTheme()
+    const newTheme = invertTheme(theme)
+    document.cookie = "theme=" + newTheme + ";path=/"
+    applyTheme(newTheme)
+  })
+
+  applyTheme(getTheme())
+</script>

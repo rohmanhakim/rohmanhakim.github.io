@@ -1,0 +1,6 @@
+baseURL = "https://arifrohman.com"
+languageCode = 'en-us'
+title = "Arif's Homepage"
+theme = 'xmin'
+[params]
+  customCSS = ["css/custom.css"]
