@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Review on Arif&#39;s Homepage</title>
+    <link>https://arifrohman.com/categories/review/</link>
+    <description>Recent content in Review on Arif&#39;s Homepage</description>
+    <generator>Hugo</generator>
+    <language>en-us</language>
+    <lastBuildDate>Mon, 25 Aug 2025 00:00:00 +0000</lastBuildDate>
+    <atom:link href="https://arifrohman.com/categories/review/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>My New Laptop: ASUS ZenBook S16</title>
+      <link>https://arifrohman.com/post/my-new-laptop-asus-zenbook-s16/</link>
+      <pubDate>Mon, 25 Aug 2025 00:00:00 +0000</pubDate>
+      <guid>https://arifrohman.com/post/my-new-laptop-asus-zenbook-s16/</guid>
+      <description>A personal review and experience with the ASUS ZenBook S16, covering specs, pros, cons, and why it was chosen as a backup workstation.</description>
+    </item>
+  </channel>
+</rss>
