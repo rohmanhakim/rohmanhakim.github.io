@@ -3,9 +3,11 @@ title: "Migrating Vidio’s Transcoding System to GKE: A Retrospective"
 date: 2025-12-20
 draft: false
 ---
+![system-abstract-vector](system-abstract-vector.webp)
+
 ***Disclaimer:** This article is a personal retrospective reconstructed from my own memory. At the time of writing, I no longer have access to Vidio’s internal documentation, source code, or design artifacts. Where exact details are uncertain, I intentionally use probabilistic language to reflect the limits of recall. The purpose of this writing is not to provide a precise historical record, but to reflect on the system, the migration process, and the engineering trade-offs involved during my time on Vidio’s video infra team.*
 
-# **1\. Background**
+# **1. Background**
 
 Vidio is one of Indonesia’s largest OTT video streaming platforms, providing both Video-on-Demand (VOD) content, such as movies and television series, and Live Streaming (LS), including broadcast TV channels, sports events, and in-house productions.
 
@@ -15,40 +17,33 @@ Supporting these different kinds of content requires a robust video transcoding 
 
 As a result, the video transcoding system is not a peripheral component of Vidio’s platform, but a core part of its business infrastructure. It sits at the center of content ingestion, processing, and delivery, directly affecting reliability, cost, and user experience.
 
-# **2\. The Transcoding Workflow at High Level**
+# **2. The Transcoding Workflow at High Level**
 
 Before discussing architecture or infrastructure, it helps to understand the overall shape of the video transcoding workflow at a high level. Vidio handled a wide variety of content sources, each driven by different business needs.
 
 Vidio’s main content streaming systems can be broadly categorized into two types based on how the content is delivered to the viewer:
 
 * **Video on Demand (VOD) streaming:** This is for pre-recorded videos that users can watch anytime.
-
 * **Live streaming:** This system broadcasts content in real-time, such as TV channels, sports events, or gaming streams. Creators can stream from a webcam, mobile device, or through encoding software.
+
+![vidio-transcoding-diagram](vidio-transcoding-diagram.webp)
 
 Technically, Vidio uses adaptive bitrate streaming for both systems so the quality adjusts automatically to the viewer’s internet connection. When a user clicks play, their device receives the video in small segments to be consumed smoothly by the players.
 
 These content sources broadly fell into several categories. In practice, these sources often overlapped, but they represent the main categories the system had to support:
 
 1. **File-based VOD sources**, including in-house productions, licensed movies, TV series, and Vidio Original Series. These assets were typically uploaded as raw video files through an internal web-based panel.
-
 2. **User-generated or partner-uploaded content (UGC)**, which at the time was mostly used by internal teams for testing purposes and by selected content partners.
-
 3. **Externally hosted content**, where some partners stored source media in external cloud storage or shared drives, which Vidio periodically scanned for new assets.
-
 4. **Live broadcast streams** from SCTV and other EMTEK subsidiaries, originating from broadcast infrastructure and converted into RTMP streams.
-
 5. **Live streams from external partners**, including local and international broadcasters and live content creators, using either broadcast-provided RTMP feeds or an internal live streaming panel similar to platforms like YouTube or Twitch.
-
 6. **Recorded live events**, particularly high-demand sports events, where live streams were recorded and later converted into VOD for rewatching.
 
 Despite these differences, content ingestion followed a small number of common patterns:
 
 1. **API-triggered asynchronous jobs**, typically used for UGC and some partner uploads. After a source file was uploaded and stored in cloud storage, an API request would enqueue a transcoding job.
-
 2. **Manually triggered jobs via internal admin panels**, used by content teams to reprocess, fix, or republish existing assets.
-
 3. **Periodic or batch jobs**, which scanned external storage locations for newly added files and triggered transcoding accordingly.
-
 4. **Internal async jobs**, used to derive VOD assets from recorded live streams. When a live stream was marked for recording, it produced a recording that later enqueued a transcoding job.
 
 Regardless of the ingestion path, all content ultimately converged into a single asynchronous processing model. A central backend service published messages to a transcoding Message-Queue topic, which were then consumed by transcoding workers responsible for executing the rest of the pipeline.
@@ -61,70 +56,51 @@ Before the GKE migration, Vidio already used Google Cloud Platform across their 
 
 As I explained in the previous section, Vidio has two streaming systems, the VOD streaming and Live streaming. All of the components in both systems use Ruby, either Rails or Executable scripts.
 
+![vidio-transcoding-old-architecture](vidio-transcoding-old-architecture.webp)
+
 ### **3.1.1 VOD Streaming Components**
 
-* **Job Tracker**: Tracks the progress of the transcoding. The only one that connects to the external database server, storing every transcoding information.
-
+* **Job Tracker**: Tracks the progress of the transcoding. Connects to the external database server, storing every transcoding information.
 * **Chunker**: Downloads source media from object storage bucket. Prepares media for parallel transcoding.
-
 * **Transcoder**: Core transcoding worker component. Transcodes the chunked source media.
-
 * **Thumbnailer**: Creates thumbnail from transcoded video.
-
 * **Packager**: Packages the source media into adaptive bitrate streaming formats, suitable to be consumed by players then uploads them to object storage bucket.
+* **Metadata Server**: Connects to the external database server. Stores information about codec profiles, bitrate ladder, and other metadata.
 
 ### **3.1.2 Live Streaming Components**
 
 * **RTMP Server**: Main ingestion point. Receives RTMP streams from the broadcast team and Vidio’s main backend.
-
 * **Transcoder**: Core transcoding worker component. Transcode the streams.
-
 * **Packager**: Packages the source media into adaptive bitrate streaming formats, suitable to be consumed by players. Does not upload them.
-
 * **Asset Uploader**: Watches the packaged outputs from packager then uploads it to an external memory cache server.
-
 * **Recordings Uploader**: Archives some LS (sport matches) that are marked for recording. Uploads them to the object storage bucket.
-
 * **Asset Server**: An HTTP web server. Serves assets produced by Packager requested by players. Retrieves them from the external memory cache server and writes them to the response body.
-
-* **Metadata Server**: The only component in the LS transcoding pipeline which connects to the external database server. Stores information about codec profiles, bitrate ladder, and other metadata.
 
 ### **3.1.3 External Components (Not included in the migration)**
 
 * **Main backend**: Handles everything else before the transcoding process: centralizes transcoding job requests from multiple source points. Sends transcoding jobs to Message Queue.
-
 * **Message Queue (Google Pub/Sub)**: Receives VOD transcoding request from main backend. Pulled by Chunker.
-
 * **Memory Cache Server**: Stores assets produced by Packager. Acts as a hot cache for low-latency delivery.
-
 * **External Database**: Used by Job Tracker (VOD) and Metadata Server (LS). Stores persistent information related to transcoding.
-
 * **Object Storage (Google Cloud Storage)**: Used by Chunker & Packager (VOD) and Recordings Uploader (LS). Stores blobs artifacts from both transcoding processes.
 
 ## **3.2 Compute & Deployment Model**
 
 Within our video infra team, we utilize Google Compute Engine as our primary runtime. We have Jenkins to serve as our automation workflow, including CI & CD pipeline, in which testing and deployment are part of. This Jenkins was a shared internal tool across teams, with the video infra team maintaining its own deployment jobs and scripts.
 
+![vidio-transcoding-old-deployment](vidio-transcoding-old-deployment.webp)
+
 Jenkins provided deployment jobs using Google Cloud CLI inside dedicated VM to do everything deployment-related:
 
 1. Engineer triggers Jenkins job
-
 2. Jenkins then :
-
    * Clones repository
-
    * Bakes VM image: Uses Ansible to build a new immutable GCE image containing the new code/config.
-
    * Creates Instance Template: generates a new GCE Instance Template version that references the newly baked-image’s ID
-
    * Roll managed instance group (MIG) for rolling update: Calls gcloud compute instance-groups managed rolling-action start-update.
-
 3. GCE performs rolling updates and gradual VM replacement, replacing old VMs with new ones based on the new instance template.
-
    * Creating new VMs from the new template (Max Surge).
-
    * Taking old VMs offline (Max Unavailable).
-
    * Repeating this process until all VMs are updated.
 
 The transcoding system has two dedicated instance groups, for primary and backup, respectively. Inside the provisioned VMs, transcoding workers ran as long-lived processes.
@@ -146,9 +122,7 @@ We also use Sidekiq as an upstream queue for transcoding jobs before Pub/Sub. Th
 For these special business cases, the workflow usually follows:
 
 1. The Content team of PM requests, either directly to video infra engineers or proxied through Test Engineers.
-
 2. The PM will make a story, marking it according to the urgency, that will be picked up by available video infra engineers / test engineers. The content team has to request the PM to make a story for them.
-
 3. Test engineers then do pairing with video infra engineers to proceed the requests. One of them will supervise the other.
 
 Sidekiq did not replace Pub/Sub. It acted as a control-plane entry point that ultimately published jobs into the same Pub/Sub-based execution pipeline.
@@ -161,8 +135,6 @@ Operational responsibility was largely machine-centered: scaling decisions, depl
 
 As the volume and the type of workloads increased, this architecture began to show operational limits. Because deployment, scaling, and recovery were all tied to machine lifecycles rather than individual workloads, operational friction increased as the system grew, which later motivated changes.
 
-## 
-
 ## **4.1 Deployment & Rollback**
 
 Machine-centered VM deployments have their own benefits.
@@ -172,11 +144,9 @@ By nature it was predictable because the infrastructure model is more establishe
 However, there are some pain points that we’ve experienced:
 
 * **Resource Hogging:** Each VM runs a full OS (we used Ubuntu), consuming significant CPU, RAM, and storage.
-
 * **Painful Rollbacks:** When something unexpected happened in application level and the engineer needs to rollback, the process involves manual works, such as:
 
   * Taking a snapshot of a working state or restoring from a prior image.
-
   * Coordinates with DevOps, Test Engineers, and On-Call Engineers to ensure data and config changes are compatible with the previous VM state. Sometimes using custom scripting if required.
 
 While rollbacks were not frequent, the cost and coordination required when they did happen made engineers cautious about deploying changes.
@@ -235,6 +205,8 @@ In contrast to live streaming pipeline migration, the less bursty nature of VOD 
 
 Parallel migration mainly concerned the LS pipeline. We began by creating a whitelist of which LS contents would be migrated first. The team coordinated with PMs and Live Ops. PMs gathered the list of LS content, they decided to choose low-traffic regional TV channels for the migration candidate. The remaining LS contents, especially the high-demand sports events and channels, stayed in the existing GCE-based pipeline.
 
+![vidio-transcoding-gke-migration-execution](vidio-transcoding-gke-migration-execution.webp)
+
 After the team prepared all the Kubernetes infrastructure and ceremonies, we coordinated with Live Ops to roll out the whitelisted LS one by one. LiveOps had schedules in which the whitelisted LS had the lowest traffic. When LiveOps gave us notice, we prepared the rollout by switching the source of the LS to a temporary “Channel is under maintenance” banner. LiveOps then routed it to the new streaming RTMP ingest URL from the migrated LS pipeline. The order for the rollout is as follows: 
 
 1. Deployed the staging version of Kubernetes LS transcoding pipeline   
@@ -249,17 +221,11 @@ After the team prepared all the Kubernetes infrastructure and ceremonies, we coo
 For the VOD, the rollout was easier. The migration team coordinated with PM and content team, as follows:
 
 1. Deployed the staging version of Kubernetes VOD transcoding pipeline
-
 2. Prepared a list of whitelisted content for migration.
-
 3. Then activated a switch in the admin panel to make the main backend use the new Kubernetes transcoding pipeline.
-
 4. The content team then began by re-transcode the whitelisted content one by one via admin panel
-
 5. Migration team monitors the metrics via metrics dashboard
-
 6. The content team checks the results via the normal Watch page.
-
 7. When no issues were observed and acceptance criteria had passed, do the same step for the production version of the VOD transcoding pipeline \#\# 
 
 ## **6.3 Containerization Approach** 
@@ -273,6 +239,8 @@ This was my first experience working with Docker and containerization while guid
 ### **6.3.1 Provisioner Component**
 
 Provisioner has two internal endpoints: creates and delete, each to create and delete Transcoder components on demand. A high demand LS like sports will have higher specs than low-audience regional TV channels, for example.
+
+![vidio-provisioner-component](vidio-provisioner-component.webp)
 
 The Provisioner would also separate between normal Transcoder and DRM transcoder. This separation is because they’re using different Packager (the next component after Transcoder in the pipeline). Separating them makes more sense to keep the container as light and stateless as possible.
 
@@ -318,7 +286,7 @@ However the targeted cost-effectiveness resulting from this migration hasn't bee
 
 Although the system had not yet reached its ideal state, this migration established a safer and more flexible execution model, which made subsequent iterations possible.
 
-# **7\. Language & Worker Redesign**
+# **7. Language & Worker Redesign**
 
 During the migration, the team revisited the existing VM-based worker design. While Ruby had served the system well, certain characteristics of the transcoding workload became more relevant in a container-based environment, prompting limited and targeted language changes at the worker level.
 
@@ -374,7 +342,7 @@ Introducing Go inside the transcoding pipeline exposed some caveats about design
 
 By introducing Go, the worker became easier to structure for parallel execution without additional orchestration complexity.
 
-# **8\. Life After Migration & Outcomes**
+# **8. Life After Migration & Outcomes**
 
 The migration to Kubernetes was completed to be executed by incrementally making changes in parallel with production ops. After using it for several whitelisted contents, the system reached a new steady state and was gradually used for a broader set of workloads, including higher-demand content.
 
@@ -389,6 +357,8 @@ When something went wrong in production, rollback is now just a small configurat
 Although the Kubernetes node specifications were not yet heavily optimized, at least now the video infra team had room to make improvements in that area.
 
 The concurrency from switching to Go in LS transcoding workers appeared more predictable when observed through resource telemetry dashboards. The time between deployment and accepting streams appeared shorter in practice.
+
+![vidio-provisioning-comparison](vidio-provisioning-comparison.webp)
 
 Resource requests and limits could be defined per workload, which gave the team more flexibility than the VM-based setup. Though the team still need to be cautious during peak events,
 
