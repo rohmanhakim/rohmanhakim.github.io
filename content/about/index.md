@@ -13,3 +13,13 @@ I’m naturally drawn to problems involving system design, developer experience,
 This site is a place where I share what I’m learning, reflect on past projects, and think out loud about software engineering topics that interest me, especially distributed systems, media infrastructure, and tooling for developers. Writing helps me slow down, make sense of complex systems, and hopefully leave something useful for others along the way.
 
 At this point in my career, I’m focusing on sustainable growth and thoughtful work. I’m interested in environments that value curiosity, care, and long-term thinking, and in projects where building things well matters as much as building them quickly.
+
+You can get my latest resume [here](https://www.dropbox.com/scl/fi/y98zk4lyxq47iffifaf45/Resume.pdf?rlkey=354jzb7so1n3e0g1gjfjccbv5&st=5m2xjs58&dl=0).
+
+Other than here, you can find me on these platforms:
+- Email: rohmanhakim[at]live.com
+- GitHub: https://github.com/rohmanhakim
+- LinkedIn: https://linkedin.com/in/rohmanhakim
+- Medium: https://medium.com/@rohmanhakim
+- Signal: [[Link](https://signal.me/#eu/6KSAPVS0Zn7BxiivcrWxHlXFznrtZ8F53pEPB8zptg7BFXk9z0NHBqdAx9wrXehz)] [[QR Code]](signal-qr-code.jpg)
+- BlueSky: https://bsky.app/profile/arifrohman.bsky.social
