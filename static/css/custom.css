@@ -10,11 +10,10 @@ main {
 }
 footer {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   min-height: 100px;
   border-top: solid 1px #ddd;
   margin-top: 80px;
-  padding-top: 32px;
   padding-bottom: 80px;
   align-items: start;
 }
@@ -58,6 +57,12 @@ pre {
 }
 .post-titles li {
   padding-bottom: 8px;
+}
+
+.comment {
+  flex-grow: 1;
+  max-width: 760px;
+  float: left;
 }
 
 @media (max-width: 720px) {
