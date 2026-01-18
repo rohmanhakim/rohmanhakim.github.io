@@ -11,10 +11,7 @@ main {
 footer {
   display: flex;
   flex-direction: row;
-  min-height: 100px;
   border-top: solid 1px #ddd;
-  margin-top: 80px;
-  padding-bottom: 80px;
   align-items: start;
 }
 pre {
@@ -61,9 +58,175 @@ pre {
 
 .comment {
   flex-grow: 1;
-  max-width: 760px;
-  float: left;
 }
+
+.sr-only {
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Page Container */
+.about-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  line-height: 1.7;
+}
+
+/* Page Header */
+.about-header {
+  margin-bottom: 3rem;
+  text-align: center;
+}
+
+.about-header h1 {
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+  color: #1a1a1a;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.about-header .subtitle {
+  font-size: 1.25rem;
+  color: #666;
+  font-weight: 400;
+  margin: 0;
+}
+
+/* Main Layout */
+.about-layout {
+  display: flex;
+  align-items: start;
+}
+
+/* Profile Section */
+.about-profile {
+  padding-top: 2rem;
+}
+
+.profile-image-wrapper {
+  margin: 0 0 1.5rem 0;
+}
+
+.profile-image-wrapper img {
+  width: 100%;
+  height: auto;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  aspect-ratio: 1;
+  object-fit: cover;
+}
+
+/* Social Links */
+.social-links {
+  margin-top: 1.5rem;
+}
+
+.social-links ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+
+/* Main Content */
+.about-content {
+  min-width: 0; /* Prevent grid blowout */
+  margin-left: 1.5rem;
+}
+
+/* Metadata Footer */
+.about-meta {
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 1px solid #e5e5e5;
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.about-meta p {
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.about-meta svg {
+  fill: currentColor;
+  opacity: 0.6;
+}
+
+/* Profile image column */
+.about-profile {
+  flex: 0 0 300px;
+}
+
+.about-profile img {
+  width: 100%;
+  height: auto;
+  border-radius: 8px; /* optional */
+}
+
+
+/* Resume Download Button */
+.resume-download-wrapper {
+  margin-top: 1.5rem;
+  position: relative;
+}
+
+.resume-download-button {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  background: #fff;
+  color: #333;
+  text-decoration: none;
+  border-radius: 8px;
+  border: #9a9a9a solid 1px;
+  position: relative;
+  overflow: hidden;
+}
+
+.resume-text {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  position: relative;
+  z-index: 1;
+}
+
+.resume-icon {
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.resume-label {
+  font-size: 1.1rem;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+.resume-sublabel {
+  font-size: 0.85rem;
+  opacity: 0.9;
+  margin-top: 0.15rem;
+}
+
+.resume-arrow {
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+}
+
 
 @media (max-width: 720px) {
   .header-container {
@@ -78,5 +241,14 @@ pre {
 
   .header-container ul {
     margin-top: 0.5rem; /* space between h1 and ul */
+  }
+
+  .about-layout {
+    flex-direction: column;
+  }
+
+  .about-content {
+    margin-left: 0;
+    margin-top: 1.5rem;
   }
 }
