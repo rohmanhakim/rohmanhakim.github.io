@@ -1,7 +1,7 @@
 ---
 title: "[DevLog] netps: Building little DevTool to Inspect Processes and Sockets"
 date: 2025-12-27
-draft: false
+draft: true
 tags:
     - devlog
     - netps
