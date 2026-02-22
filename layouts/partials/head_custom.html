@@ -1,4 +1,7 @@
 <link rel="stylesheet" href="{{ "css/custom.css" | relURL }}">
+{{ if and (eq .Kind "page") (eq .Section "post") }}
+  <link rel="stylesheet" href="{{ "css/mini-toc.css" | relURL }}">
+{{ end }}
 <script data-goatcounter="https://arifrohman.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
 <div class="header-container">
   <h1><a href="{{ "" | relURL }}">Arif's Homepage</a></h1>
