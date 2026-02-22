@@ -19,7 +19,7 @@ There are many ways to implement a theme switcher. The most common way is by hav
 
 In this post, I'm going to show you how to create one using simple JavaScript and cookies.
 
-# CSS Inversion Filter
+## CSS Inversion Filter
 
 The main idea behind the following approach is the [`invert()` CSS function](https://developer.mozilla.org/en-US/docs/Web/CSS/filter-function/invert) which will be applied to the page's `html` element.
 
@@ -37,7 +37,7 @@ document.querySelectorAll("img").forEach(el => {
 })
 ```
 
-# State Persistence with Cookie
+## State Persistence with Cookie
 To make the page remember the user's last chosen theme, we can simply use a cookie to store the value.
 
 ```javascript
@@ -46,7 +46,7 @@ document.cookie = "theme=" + newTheme + ";path=/"
 
 If this theme switching method will be used for a multi-page website, it is important that the `path` value must be enforced to use the same value; in this case, it will be set to the root path (`/`), or else there will be multiple theme cookies for each page.
 
-# Example Script
+## Example Script
 In the example below, we will create a simple implementation by making a button that will trigger the CSS inversion filter and cookie update.
 
 First, we begin by defining the trigger button. Here is a simple button
@@ -104,7 +104,7 @@ To execute the script, we just need to create a `<script>` tag in the desired pa
 </script>
 ```
 
-## Excluding Certain Child Elements
+### Excluding Certain Child Elements
 
 As I mentioned before, we also need to exclude some tags like `<img>` from inversion by re-applying the same CSS inversion filter for all instances of the tag
 
@@ -127,7 +127,7 @@ function applyTheme(toTheme) {
 }
 ```
 
-# Wrap Up
+## Wrap Up
 
 Here is the complete script for this example:
 
@@ -169,7 +169,7 @@ Here is the complete script for this example:
 </script>
 ``` 
 
-# Flaw and Consideration
+## Flaw and Consideration
 
 There is a flaw in this whole approach, which is it will also invert emojis. If your website is complex or uses emojis, consider using the common method of using two CSS files for the theme.
 

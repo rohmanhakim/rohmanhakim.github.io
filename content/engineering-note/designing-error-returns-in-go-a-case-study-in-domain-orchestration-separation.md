@@ -45,7 +45,7 @@ if !repairable {
 
 The problem is every check always returns `ErrCauseStructurallyIncorrect`. It's not wrong, it's just very limiting. I wanted to make the error more granular for logging purposes, so the logging would be richer as I passed more context about the actual cause.
 
-# The Observability Requirement
+## The Observability Requirement
 
 At the highest level of the sanitization pipeline, there is observability logging:
 
@@ -77,11 +77,11 @@ func (s *Sanitizer) Sanitize(
 
 The `sanitize()` function calls `isRepairable` and uses its result to gatekeep the downstream sanitization process. I need granular error causes because `RecordError()` uses these to build metrics, alerts, and debugging context. This requirement constrained the design.
 
-# Design Alternatives Considered
+## Design Alternatives Considered
 
 There are several common patterns in Go for this type of function. Let me walk through what I considered and why I made the choices I did.
 
-## Option 1: Return `(bool, error)`
+### Option 1: Return `(bool, error)`
 
 ```go
 func isRepairable(doc *html.Node) (bool, error) {
@@ -136,7 +136,7 @@ That gives three meaningful states:
 
 This is impossible to encode with just error unless you overload error to also mean "false," which is often semantically wrong.
 
-### When `(bool, error)` is genuinely useful:
+#### When `(bool, error)` is genuinely useful:
 
 **1. False is a normal, non-error outcome**
 
@@ -177,7 +177,7 @@ Where:
 
 This is acceptable for validation, but not ideal if `false` is a frequent, expected branch in normal flow. Then `(bool, error)` is clearer.
 
-## Option 2: Return only `error`
+### Option 2: Return only `error`
 
 When false is the frequent case, it's good to omit the bool and return only `error`. If it's `nil`, the check passes.
 
@@ -222,9 +222,9 @@ This is preferred when:
 
 This is often more idiomatic than `(bool, error)` for validation/guard-style checks.
 
-# Why I Chose Neither
+## Why I Chose Neither
 
-## Reason 1: No `(false, nil)` state exists in my domain
+### Reason 1: No `(false, nil)` state exists in my domain
 
 In the `(bool, error)` pattern, there's this possibility:
 
@@ -234,7 +234,7 @@ In the `(bool, error)` pattern, there's this possibility:
 
 This doesn't suit my case. I need the caller to be able to access the structured cause. I want the caller to know the cause of the business rule violation because the purpose is to enrich the logging at the topmost level. This branch of business flow won't happen. The cause when the document cannot be repaired must be known and enforced, as no operational error will happen downstream that would prevent me from determining *why* it's unrepairable.
 
-## Reason 2: I want to keep domain logic separate from error infrastructure
+### Reason 2: I want to keep domain logic separate from error infrastructure
 
 The "return error" pattern was close to being chosen: `isRepairable` is a gatekeeper (in essence, a validator) and no further flow would be executed if it fails.
 
@@ -280,7 +280,7 @@ It's an orchestration-level concern. The `Retryable` flag, the `Message` formatt
 
 More importantly, if I later need to check repairability in a different context, say, a CLI tool that validates document files, or a completely different service, I'd have to drag `SanitizationError` along with it. The domain logic would be coupled to infrastructure concerns.
 
-# The Solution: Domain-Specific Result Type
+## The Solution: Domain-Specific Result Type
 
 I introduced a repairing-specific struct to wrap the predicate and the reason:
 
@@ -377,9 +377,9 @@ if !result.Repairable {
 // ...
 ```
 
-# Why This Design Works
+## Why This Design Works
 
-## 1. Clear Separation of Concerns
+### 1. Clear Separation of Concerns
 
 `isRepairable()` answers a pure domain question: "Can this document be repaired?" It knows nothing about:
 - How errors are structured in the sanitization pipeline
@@ -392,11 +392,11 @@ This means I can:
 - Reuse it in other contexts (CLI tools, different services)
 - Change error handling without touching domain logic
 
-## 2. Explicit Translation Layer
+### 2. Explicit Translation Layer
 
 The `mapReasonToErrorCause()` function is intentional indirection. It enforces that domain reasons and error causes evolve independently. If someone adds a new `UnrepairabilityReason`, the compiler forces them to update the mapper. This prevents the common bug where you add a new failure case but forget to handle it in error logging.
 
-## 3. Type Safety and Self-Documentation
+### 3. Type Safety and Self-Documentation
 
 ```go
 result := isRepairable(doc)
@@ -409,7 +409,7 @@ if !result.Repairable {
 
 You can't forget to check the reason: it's right there in the struct. Compare this to returning just a boolean, where the caller has to "remember" what might have gone wrong.
 
-## 4. Observability-Friendly
+### 4. Observability-Friendly
 
 Because I translate `UnrepairabilityReason` to `SanitizationErrorCause` at the orchestration boundary, the observability layer gets structured, queryable data:
 
@@ -429,9 +429,9 @@ If all failures were just `ErrCauseStructurallyIncorrect`, I'd lose the ability 
 - Set different alert thresholds for different failure types
 - Debug production issues by filtering logs by specific causes
 
-# Addressing Potential Concerns
+## Addressing Potential Concerns
 
-## "Isn't the boolean in RepairableResult redundant?"
+### "Isn't the boolean in RepairableResult redundant?"
 
 Technically, yes. You could infer it from `Reason == ""`. But keeping it explicit has ergonomic value:
 
@@ -451,7 +451,7 @@ if result.Reason != "" {
 
 The redundancy is a feature, not a bug. It makes the code read more naturally.
 
-## "Why not just use sentinel errors?"
+### "Why not just use sentinel errors?"
 
 You could define:
 
@@ -489,7 +489,7 @@ if !result.Repairable {
 
 The latter is clearer and easier to extend.
 
-## "This seems like a lot of ceremony for a simple check"
+### "This seems like a lot of ceremony for a simple check"
 
 It would be, if this were just a simple check. But it's not, it's a critical validation point that:
 - Gates the entire sanitization pipeline
@@ -499,7 +499,7 @@ It would be, if this were just a simple check. But it's not, it's a critical val
 
 The "ceremony" is buying me maintainability, testability, and clear separation between domain logic and infrastructure concerns. In a small script, this would be overkill. In a production service with observability requirements, it's appropriate engineering.
 
-# Lessons Learned
+## Lessons Learned
 
 1. **Consider the full context**: What seemed like a simple boolean check was actually feeding a sophisticated observability system. The design needed to account for that.
 

@@ -15,7 +15,7 @@ summary: "Learn how to include images from subfolders in your Windows 11 wallpap
 
 Windows 11 has a feature that enables us to change desktop wallpapers at specified intervals. However, by default, it only scans pictures in the root directory of our choice and doesn't allow us to include its subfolders. To change this, we need to make changes to the Windows 11 system.
 
-# Install link_Nto1 PowerShell Script
+## Install link_Nto1 PowerShell Script
 
 link_Nto1 is a PowerShell script that helps us create hard/symbolic links to all files of a specified source folder inside a specified destination folder. In the context of this post, we can specify our wallpapers folder (which contains subfolders), and then the script will make symbolic links to all pictures in its subfolders. The script then places those symbolic links in certain folders which we specify, then we can make Windows 11 use that folder instead of our original wallpapers folder.
 
@@ -61,7 +61,7 @@ After we run the link_Nto1 script, change the Execution Policy back:
 PS> Set-ExecutionPolicy Restricted
 ```
 
-# Set the Windows 11 slideshow source to the desktop_slideshow folder
+## Set the Windows 11 slideshow source to the desktop_slideshow folder
 
 1. Go to Settings > Personalization > Background
     
