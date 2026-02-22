@@ -6,43 +6,56 @@
 
 {{ .Content }}
 
-<h1>Hello</h1>
-<br/>
-I’m a software engineer working on backend systems, infrastructure, and media platforms.
-</br>
-I enjoy building and understanding systems that need to be reliable, maintainable, and practical to operate over time.
-<br/>
-Sometimes i just tinker with computer out of curiousity.
-<br/>
-This site is a personal space where I document what I learn, reflect, and think through ideas at my own pace
-<br/>
-<br/>
-For further contacts, see <a href="/about">About</a> page. 
-<br/>
-<h2>What you’ll find here:</h2>
-<h3>Engineering Notes</h3>
-<p>Focused writings drawn from my experience as a software engineer. These are typically technical and practical: system design decisions, infrastructure trade-offs, operational lessons, and things I wish I had written down earlier.</p>
+<main class="portal-container">
+  <h1>Hello</h1>
+  <br />
+  I’m a software engineer working on backend systems, infrastructure, and media platforms.
+  </br>
+  I enjoy building and understanding systems that need to be reliable, maintainable, and practical to operate over time.
+  <br />
+  Sometimes i just tinker with computer out of curiousity.
+  <br />
+  This site is a personal space where I document what I learn, reflect, and think through ideas at my own pace
+  <br />
+  <br />
+  For further contacts, see <a href="/about">About</a> page.
+  <br />
+  <h2>What you’ll find here:</h2>
+  <div class="module">
+    <h3 class="module-header">Engineering Notes</h3>
+    <div class="module-content">
+      <p>Focused writings drawn from my experience as a software engineer. These are typically technical and practical:
+        system design decisions, infrastructure trade-offs, operational lessons, and things I wish I had written down
+        earlier.</p>
 
-<ul class="post-titles">
-  {{ $pages := .Pages }}
-  {{ if .IsHome }}{{ $pages = .Site.RegularPages }}{{ end }}
-  {{ range where $pages "Section" "engineering-note" }}
-  <li>
-    <a href="{{ .RelPermalink }}">{{ .Title | markdownify }}</a>
-  </li>
-  {{ end }}
-</ul>
-
-<h3>Latest Posts</h3>
-<p>Everything else. Longer reflections, ideas in progress, observations outside of day-to-day engineering work, and topics that don’t neatly fit into technical notes but are still wants to share with you.</p>
-<ul class="post-titles">
-  {{ $pages := .Pages }}
-  {{ if .IsHome }}{{ $pages = .Site.RegularPages }}{{ end }}
-  {{ range (where $pages "Section" "post") }}
-  <li>
-    <a href="{{ .RelPermalink }}">{{ .Title | markdownify }}</a>
-  </li>
-  {{ end }}
-</ul>
+      <ul class="post-titles">
+        {{ $pages := .Pages }}
+        {{ if .IsHome }}{{ $pages = .Site.RegularPages }}{{ end }}
+        {{ range where $pages "Section" "engineering-note" }}
+        <li>
+          <a href="{{ .RelPermalink }}">{{ .Title | markdownify }}</a>
+        </li>
+        {{ end }}
+      </ul>
+    </div>
+  </div>
+  <div class="module">
+    <h3 class="module-header">Latest Posts</h3>
+    <div class="module-content">
+      <p>Everything else. Longer reflections, ideas in progress, observations outside of day-to-day engineering work,
+        and
+        topics that don’t neatly fit into technical notes but are still wants to share with you.</p>
+      <ul class="post-titles">
+        {{ $pages := .Pages }}
+        {{ if .IsHome }}{{ $pages = .Site.RegularPages }}{{ end }}
+        {{ range (where $pages "Section" "post") }}
+        <li>
+          <a href="{{ .RelPermalink }}">{{ .Title | markdownify }}</a>
+        </li>
+        {{ end }}
+      </ul>
+    </div>
+  </div>
+</main>
 
 {{ partial "footer.html" . }}
