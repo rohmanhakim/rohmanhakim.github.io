@@ -2,5 +2,13 @@ baseURL = "https://arifrohman.com"
 languageCode = 'en-us'
 title = "Arif's Homepage"
 theme = 'xmin'
+
 [params]
   customCSS = ["css/custom.css"]
+
+[outputs]
+  home = ["HTML", "RSS"]
+  section = ["HTML", "RSS"]
+  
+[services.rss]
+  limit = 10

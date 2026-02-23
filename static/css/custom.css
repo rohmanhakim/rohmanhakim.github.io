@@ -13,10 +13,10 @@ article {
   font-size: 1.2rem;
 }
 footer {
-  display: flex;
   flex-direction: row;
   border-top: solid 1px #ddd;
   align-items: start;
+  text-align: inherit;
 }
 pre {
   border: 1px solid #ddd;
@@ -51,6 +51,25 @@ pre {
 .header-container ul li {
   padding-right: 12px;
 }
+
+.footer-container {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+.footer-container > :nth-child(1) {
+  flex-grow: 1;
+}
+.footer-container ul {
+  list-style: none;
+  display: flex;
+  flex-direction: row;
+  padding-left: 0;
+}
+.footer-container ul li {
+  padding-right: 12px;
+}
+
 .post-titles {
   list-style: none;
   padding-left: 0;

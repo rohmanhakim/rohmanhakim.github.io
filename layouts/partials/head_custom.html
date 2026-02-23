@@ -3,6 +3,16 @@
   <link rel="stylesheet" href="{{ "css/mini-toc.css" | relURL }}">
 {{ end }}
 <link rel="stylesheet" href="{{ "css/yahoo.css" | relURL }}">
+
+<!-- RSS Feed Auto-Discovery -->
+<link rel="alternate" type="application/rss+xml" title="{{ .Site.Title }} - RSS Feed" href="{{ .Site.BaseURL }}index.xml" />
+{{ if eq .Section "post" }}
+<link rel="alternate" type="application/rss+xml" title="{{ .Site.Title }} - Posts RSS Feed" href="{{ .Site.BaseURL }}post/index.xml" />
+{{ end }}
+{{ if eq .Section "engineering-note" }}
+<link rel="alternate" type="application/rss+xml" title="{{ .Site.Title }} - Engineering Notes RSS Feed" href="{{ .Site.BaseURL }}engineering-note/index.xml" />
+{{ end }}
+
 <script data-goatcounter="https://arifrohman.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
 <div class="header-container">
   <h1><a href="{{ "" | relURL }}">Arif's Homepage</a></h1>
@@ -15,6 +25,9 @@
     </li>
     <li>
       <a href="/about">About</a>
+    </li>
+    <li>
+      <a href="/index.xml" title="RSS Feed">RSS</a>
     </li>
   </ul>
   <button id="btn-switch-theme">Switch to dark Theme</button>
