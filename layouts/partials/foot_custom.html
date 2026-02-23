@@ -16,6 +16,8 @@
     btnSwitchTheme.textContent = "Switch to " + invertTheme(toTheme) + " theme"
     document.querySelector("html").style = toTheme == "dark" ? "filter: invert(1);" : ""
     neuralizeChildrenColor("img", toTheme)
+    neuralizeChildrenColor("button", toTheme)
+    neuralizeChildrenColor(".resume-download-button", toTheme)
     neuralizeChildrenColor(".highlight", toTheme)
   }
 
