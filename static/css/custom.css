@@ -26,7 +26,8 @@ footer {
   text-align: inherit;
 }
 pre {
-  border: 1px solid #ddd;
+  border: 0px solid #ddd;
+  border-radius: 2px;
   box-shadow: none;
   padding: 1em;
   overflow-x: auto;
