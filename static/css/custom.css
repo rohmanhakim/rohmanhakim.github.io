@@ -252,17 +252,17 @@ pre {
 
 
 @media (max-width: 720px) {
-  .header-container {
+  .header-container, .footer-container {
     flex-direction: column;
     align-items: flex-start; /* so h1 and ul stack neatly */
   }
 
-  .header-container h1 {
+  .header-container h1, .footer-container > :nth-child(1) {
     flex-grow: 0; /* don’t force it to stretch */
     width: 100%; /* optional: make it full width */
   }
 
-  .header-container ul {
+  .header-container ul, .footer-container ul {
     margin-top: 0.5rem; /* space between h1 and ul */
   }
 
