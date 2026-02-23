@@ -1,0 +1,14 @@
+{{ $number := . }}
+{{ $suffix := "th" }}
+{{ $remainder10 := mod $number 10 }}
+{{ $remainder100 := mod $number 100 }}
+
+{{ if and (eq $remainder10 1) (ne $remainder100 11) }}
+    {{ $suffix = "st" }}
+{{ else if and (eq $remainder10 2) (ne $remainder100 12) }}
+    {{ $suffix = "nd" }}
+{{ else if and (eq $remainder10 3) (ne $remainder100 13) }}
+    {{ $suffix = "rd" }}
+{{ end }}
+
+{{ $number }}{{ $suffix }}
