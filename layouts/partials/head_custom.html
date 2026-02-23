@@ -1,7 +1,10 @@
-<link rel="stylesheet" href="{{ "css/custom.css" | relURL }}">
 {{ if and (eq .Kind "page") (or (eq .Section "post") (eq .Section "engineering-note")) }}
   <link rel="stylesheet" href="{{ "css/mini-toc.css" | relURL }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Source+Sans+3:ital,wght@0,200..900;1,200..900&display=swap" rel="stylesheet">
 {{ end }}
+<link rel="stylesheet" href="{{ "css/custom.css" | relURL }}">
 <link rel="stylesheet" href="{{ "css/yahoo.css" | relURL }}">
 
 <!-- RSS Feed Auto-Discovery -->

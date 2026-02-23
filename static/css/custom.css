@@ -10,7 +10,14 @@ main {
   margin-bottom: 80px;
 }
 article {
-  font-size: 1.2rem;
+  font-size: 1.4rem;
+  font-family: "Source Sans 3", Arial, Helvetica, sans-serif;
+}
+article strong {
+  font-weight: bold;
+}
+article ul li strong, article ol li strong  {
+  font-weight: 600;
 }
 footer {
   flex-direction: row;
