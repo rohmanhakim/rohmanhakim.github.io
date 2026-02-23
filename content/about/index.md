@@ -29,6 +29,10 @@ This site is a place where I share what I'm learning, reflect on past projects, 
 
 At this point in my career, I'm focusing on sustainable growth and thoughtful work. I'm interested in environments that value curiosity, care, and long-term thinking, and in projects where building things well matters as much as building them quickly.
 
-## My Current Setup
 
-[![arif's fastfetch screenshot](/assets/images/fastfetch.webp)](/assets/images/fastfetch.webp)
+
+
+
+
+
+

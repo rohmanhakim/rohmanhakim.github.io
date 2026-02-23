@@ -195,7 +195,7 @@ pre {
 
 /* Profile image column */
 .about-profile {
-  flex: 0 0 300px;
+  flex: 0 0 250px;
 }
 
 .about-profile img {
@@ -204,6 +204,9 @@ pre {
   border-radius: 8px; /* optional */
 }
 
+.v-padding {
+  height: 200px;
+}
 
 /* Resume Download Button */
 .resume-download-wrapper {
@@ -219,10 +222,10 @@ pre {
   background: #fff;
   color: #333;
   text-decoration: none;
-  border-radius: 8px;
   border: #9a9a9a solid 1px;
   position: relative;
   overflow: hidden;
+  text-shadow: 0 1px 0 #fff3b0;
 }
 
 .resume-text {

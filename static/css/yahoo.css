@@ -78,6 +78,45 @@ button:active {
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
+.about-profile img {
+  width: 98%;
+  height: auto;
+  border: solid 1px #999;
+  border-radius: 0px;
+  padding: 2px;
+}
+
+.resume-download-button {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-family: Arial, sans-serif;
+  font-size: 14px;
+  font-weight: bold;
+  color: #000;
+
+  padding: 6px 16px;
+
+  /* Hard split: top vs bottom */
+  background: linear-gradient(
+    to bottom,
+    #ffe08a 0%,
+    #ffe08a 48%,
+    #f4b400 48%,
+    #f4b400 100%
+  );
+
+  border: 1px solid #b88900;
+  border-radius: 2px;
+
+  box-shadow:
+    inset 0 1px 0 #fff6cc,   /* top highlight */
+    inset 0 -1px 0 #d49a00;  /* bottom edge */
+
+  cursor: pointer;
+  text-shadow: 0 1px 0 #fff3b0;
+}
+
 a {
     color: #16387c;
     text-decoration: none;

@@ -4,8 +4,8 @@
   {{ with .Params.author }}<h2 class="author">{{ . }}</h2>{{ end }}
 </div>
 
-<main>
-  <article class="about-page">
+<main class="portal-container">
+  <div class="about-page">
     <div class="about-layout">
       <aside class="about-profile">
         <img src="{{ .Params.profileImage }}" alt="Profile picture" loading="lazy" />
@@ -16,14 +16,14 @@
           <h2>Connect with me</h2>
           <ul>
             {{ with .Params.email }}
-            <li><strong>Email: </strong><a href="mailto:{{ . }}" itemprop="email" rel="me">{{ . }}</a></li>
+            <li><strong>📧 </strong><a href="mailto:{{ . }}" itemprop="email" rel="me">{{ . }}</a></li>
             {{ end }}
             {{ with .Params.github }}
-            <li><strong>GitHub: </strong><a href="{{ . }}" itemprop="sameAs" rel="me noopener" target="_blank">{{ .
+            <li><strong>🧑‍💻 </strong><a href="{{ . }}" itemprop="sameAs" rel="me noopener" target="_blank">{{ .
                 }}</a></li>
             {{ end }}
             {{ with .Params.linkedin }}
-            <li><strong>LinkedIn: </strong><a href="{{ . }}" itemprop="sameAs" rel="me noopener" target="_blank">{{ .
+            <li><strong>📄 </strong><a href="{{ . }}" itemprop="sameAs" rel="me noopener" target="_blank">{{ .
                 }}</a></li>
             {{ end }}
           </ul>
@@ -56,9 +56,10 @@
 
       <div class="about-content">
         {{ .Content }}
+        <div class="v-padding"></div>
       </div>
     </div>
-  </article>
+  </div>
 </main>
 
 <!-- Structured Data for SEO -->
