@@ -122,6 +122,10 @@ a {
     text-decoration: none;
 }
 
+article a {
+  color: #3463c1;
+}
+
 a:hover {
     text-decoration: underline;
 }
