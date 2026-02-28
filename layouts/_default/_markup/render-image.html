@@ -1,0 +1,13 @@
+{{- $image_file := .Destination -}}
+{{- $alt := .Text -}}
+{{- $base := path.BaseName $image_file -}}
+{{- $dir := path.Dir $image_file -}}
+
+{{- $avif := path.Join $dir (printf "%s.avif" $base) -}}
+{{- $webp := path.Join $dir (printf "%s.webp" $base) -}}
+
+<picture>
+  <source srcset="{{ $avif }}" type="image/avif">
+  <source srcset="{{ $webp }}" type="image/webp">
+  <img src="{{ $image_file }}" alt="{{ $alt }}">
+</picture>
