@@ -5,9 +5,15 @@
 
 {{- $avif := path.Join $dir (printf "%s.avif" $base) -}}
 {{- $webp := path.Join $dir (printf "%s.webp" $base) -}}
+{{- $gif := path.Join $dir (printf "%s.gif" $base) -}}
 
-<picture>
-  <source srcset="{{ $avif }}" type="image/avif">
-  <source srcset="{{ $webp }}" type="image/webp">
+{{ if $gif }}
   <img src="{{ $image_file }}" alt="{{ $alt }}">
-</picture>
+{{ else }}
+  <picture>
+    <source srcset="{{ $avif }}" type="image/avif">
+    <source srcset="{{ $webp }}" type="image/webp">
+    <source srcset="{{ $gif }}" type="image/gif">
+    <img src="{{ $image_file }}" alt="{{ $alt }}">
+  </picture>
+{{ end }}
