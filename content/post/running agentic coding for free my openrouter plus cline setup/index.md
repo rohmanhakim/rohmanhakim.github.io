@@ -74,23 +74,23 @@ Here's the full process, start to finish. It should take around 10 minutes.
 
 Go to [openrouter.ai](https://openrouter.ai/) and sign up for an account.
 
-[![screenshot of OpenRouter signup/homepage](assets/01-screenshot-of-openrouter-signup.webp)](assets/01-screenshot-of-openrouter-signup.webp)
+[![screenshot of OpenRouter signup/homepage](images/01-screenshot-of-openrouter-signup.avif)](images/01-screenshot-of-openrouter-signup.avif)
 
 Once you're in, you'll need to set up billing. OpenRouter uses a **top-up model**: you add credits to your account, and those credits get consumed as you use paid models. Each inference draws down a small amount based on the model's pricing.
 
 **But here's the thing: for our setup, you won't actually be spending credits.** Step 3.5 Flash is on the free tier, so no credits will be deducted. You still need to set up a payment method though. It's a required step to activate your account.
 
-[![screenshot of OpenRouter billing/payment setup page](assets/02-openrouter-billing-payment-setup-page.webp)](assets/02-openrouter-billing-payment-setup-page.webp)
+[![screenshot of OpenRouter billing/payment setup page](images/02-openrouter-billing-payment-setup-page.avif)](images/02-openrouter-billing-payment-setup-page.avif)
 
 To set up billing, you'll need a credit or debit card. OpenRouter will charge a small authorization hold (a few dollars or less) to verify the card (this is completely standard for any online payment platform, and it will be released back to you. It's not an actual charge).
 
 > **For Indonesian readers:** If you don't have a physical credit/debit card, **Jenius e-card** works perfectly here. It's a virtual card you can set up through the Jenius app. Just make sure you have some balance on it, enough to cover the small authorization hold. Once that clears, you're good to go.
 
-[![screenshot of the billing setup with payment method field](assets/03-billing-setup-with-payment-method-field.webp)](assets/03-billing-setup-with-payment-method-field.webp)
+[![screenshot of the billing setup with payment method field](images/03-billing-setup-with-payment-method-field.avif)](images/03-billing-setup-with-payment-method-field.avif)
 
 Once billing is set up, you need to create an **API key**. An API key is a unique string that lets other tools, like Cline, authenticate with OpenRouter on your behalf, so they can make requests to the models without you logging in each time. Go to [openrouter.ai/settings/keys](https://openrouter.ai/settings/keys) and create a new key.
 
-[![screenshot of the OpenRouter API key creation page](assets/04-openrouter-api-key-creation-page.webp)](assets/04-openrouter-api-key-creation-page.webp)
+[![screenshot of the OpenRouter API key creation page](images/04-openrouter-api-key-creation-page.avif)](images/04-openrouter-api-key-creation-page.avif)
 
 You'll see four fields to fill in:
 
@@ -106,59 +106,59 @@ For my setup, I left the credit limit blank and set no expiration, simple and lo
 
 **Important: once you create the key, copy it and store it somewhere safe.** OpenRouter will not show it to you again. You'll need it in a later step when configuring Cline.
 
-[![screenshot of the newly created API key with the copy button](assets/05-newly-created-api-key-with-the-copy-button.webp)](assets/05-newly-created-api-key-with-the-copy-button.webp)
+[![screenshot of the newly created API key with the copy button](images/05-newly-created-api-key-with-the-copy-button.avif)](images/05-newly-created-api-key-with-the-copy-button.avif)
 
 ### Step 2: Download and install Visual Studio Code
 
 If you don't already have it, grab [VS Code](https://code.visualstudio.com/) from the official site. It's free and available for Windows, macOS, and Linux.
 
-[![screenshot of VS Code download page](assets/06-vscode-download-page.webp)](assets/06-vscode-download-page.webp)
+[![screenshot of VS Code download page](images/06-vscode-download-page.avif)](images/06-vscode-download-page.avif)
 
 ### Step 3: Install the Cline extension
 
 Open VS Code, go to the **Extensions** panel (the puzzle piece icon on the left sidebar, or press `Ctrl+Shift+X`), and search for **Cline**.
 
-[![screenshot of VS Code Extensions panel with Cline search result](assets/07-vscode-extensions-panel-with-cline-search-result.webp)](assets/07-vscode-extensions-panel-with-cline-search-result.webp)
+[![screenshot of VS Code Extensions panel with Cline search result](images/07-vscode-extensions-panel-with-cline-search-result.avif)](images/07-vscode-extensions-panel-with-cline-search-result.avif)
 
 Install it, then open the extension on the left panel. You'll be prompted "How will you use Cline?", ignore this for now and click "Login to Cline", you'll be prompted to SignUp for Cline account, go ahead and do that. This is just to activate the extension and give it a session history feature. No billing or payment is needed on Cline's side, because we're going to point it at OpenRouter for the actual model.
 
-[![screenshot of Cline after installation](assets/08a-cline-after-installation.webp)](assets/08a-cline-after-installation.webp)
+[![screenshot of Cline after installation](images/08a-cline-after-installation.avif)](images/08a-cline-after-installation.avif)
 
-[![screenshot of Cline activation/account creation](assets/08b-cline-activation-account-creation.webp)](assets/08b-cline-activation-account-creation.webp)
+[![screenshot of Cline activation/account creation](images/08b-cline-activation-account-creation.avif)](images/08b-cline-activation-account-creation.avif)
 
-[![screenshot of Cline authorization in VS Code](assets/08c-cline-authorization-vscode.webp)](assets/08c-cline-authorization-vscode.webp)
+[![screenshot of Cline authorization in VS Code](images/08c-cline-authorization-vscode.avif)](images/08c-cline-authorization-vscode.avif)
 
 ### Step 4: Configure Cline to use OpenRouter
 
 This is where everything gets connected. Once Cline is installed and activated, click the **gear icon** in the top-right corner of the Cline sidebar to open its settings.
 
-[![screenshot of the gear icon in the top-right of the Cline sidebar](assets/09-gear-icon-in-the-top-right-of-the-cline-sidebar.webp)](assets/09-gear-icon-in-the-top-right-of-the-cline-sidebar.webp)
+[![screenshot of the gear icon in the top-right of the Cline sidebar](images/09-gear-icon-in-the-top-right-of-the-cline-sidebar.avif)](images/09-gear-icon-in-the-top-right-of-the-cline-sidebar.avif)
 
 You'll see a configuration form with several fields. Fill them in as follows:
 
 **API Provider**: select `OpenRouter` from the dropdown. This tells Cline to route all model requests through OpenRouter instead of talking to a provider directly.
 
-[![screenshot of the API Provider dropdown with OpenRouter selected](assets/10-api-provider-dropdown-with-openrouter-selected.webp)](assets/10-api-provider-dropdown-with-openrouter-selected.webp)
+[![screenshot of the API Provider dropdown with OpenRouter selected](images/10-api-provider-dropdown-with-openrouter-selected.avif)](images/10-api-provider-dropdown-with-openrouter-selected.avif)
 
 **OpenRouter API Key**: paste the API key you copied in Step 1 here. This is how Cline authenticates with OpenRouter on your behalf.
 
-[![screenshot of the API Key field with the key pasted in](assets/11-api-key-field-with-the-key-pasted-in.webp)](assets/11-api-key-field-with-the-key-pasted-in.webp)
+[![screenshot of the API Key field with the key pasted in](images/11-api-key-field-with-the-key-pasted-in.avif)](images/11-api-key-field-with-the-key-pasted-in.avif)
 
 **Model**: select or type `stepfun/step-3.5-flash:free`. This is the specific model Cline will use for all your tasks.
 
-[![screenshot of the Model field with stepfun/step-3.5-flash:free entered](assets/12-model-field-with-stepfun-step-35-flashfree-entered.webp)](assets/12-model-field-with-stepfun-step-35-flashfree-entered.webp)
+[![screenshot of the Model field with stepfun/step-3.5-flash:free entered](images/12-model-field-with-stepfun-step-35-flashfree-entered.avif)](images/12-model-field-with-stepfun-step-35-flashfree-entered.avif)
 
 **Enable Thinking (1024 tokens)**: check this box. Step 3.5 Flash is a reasoning model, meaning it has the ability to "think" internally before generating its response, working through the problem step by step before writing code. When this is enabled, Cline allocates a budget of 1024 reasoning tokens for that internal thinking process. It can improve the quality of the model's output, especially on trickier tasks. The 1024 token budget is Cline's minimum. It's a small amount and won't noticeably affect performance on the free tier.
 
-[![screenshot of the Enable Thinking checkbox checked](assets/13-enable-thinking-checkbox-checked.webp)](assets/13-enable-thinking-checkbox-checked.webp)
+[![screenshot of the Enable Thinking checkbox checked](images/13-enable-thinking-checkbox-checked.avif)](images/13-enable-thinking-checkbox-checked.avif)
 
 Once all the fields are filled in, click the **Done** button at the top of the Cline sidebar. That's it. Cline is now fully wired up to Step 3.5 Flash via OpenRouter.
 
-[![screenshot of the Done button at the top of the Cline sidebar](assets/14a-done-button-at-the-top-of-the-cline-sidebar.webp)](assets/14a-done-button-at-the-top-of-the-cline-sidebar.webp)
+[![screenshot of the Done button at the top of the Cline sidebar](images/14a-done-button-at-the-top-of-the-cline-sidebar.avif)](images/14a-done-button-at-the-top-of-the-cline-sidebar.avif)
 
 At the **bottom of the Cline sidebar**, you'll see something like `openrouter:stepfun/step-3.5-flash:free`. This is a model selector. In case you want to change to another model later, you can click on the model selector there.
 
-[![screenshot of the model selector at the bottom of Cline sidebar](assets/14b-model-selector-at-the-bottom-of-cline-sidebar.webp)](assets/14b-model-selector-at-the-bottom-of-cline-sidebar.webp)
+[![screenshot of the model selector at the bottom of Cline sidebar](images/14b-model-selector-at-the-bottom-of-cline-sidebar.avif)](images/14b-model-selector-at-the-bottom-of-cline-sidebar.avif)
 
 ### Step 5: Try it out
 
@@ -214,13 +214,13 @@ It's worth setting expectations here. Agentic coding with current LLMs isn't mag
 
 The single most important thing to understand about Cline is that it has two modes: **Plan** and **Act**. You toggle between them in the **bottom-right corner** of the Cline extension panel.
 
-[![screenshot of the Plan/Act toggle in the bottom-right corner of Cline](assets/15-plan-Act-toggle-in-the-bottom-right-corner-of-cline.webp)](assets/15-plan-Act-toggle-in-the-bottom-right-corner-of-cline.webp)
+[![screenshot of the Plan/Act toggle in the bottom-right corner of Cline](images/15-plan-Act-toggle-in-the-bottom-right-corner-of-cline.avif)](images/15-plan-Act-toggle-in-the-bottom-right-corner-of-cline.avif)
 
 In **Plan mode**, the model cannot touch your files. It can read them, but it won't write or modify anything. This is where you do the thinking together with the model. You describe what you want, and the model breaks it down into a concrete, sequential plan: the steps it would take to actually execute the task.
 
-[![screenshot of Cline plan mode](assets/15b-plan-mode.webp)](assets/15b-plan-mode.webp)
+[![screenshot of Cline plan mode](images/15b-plan-mode.avif)](images/15b-plan-mode.avif)
 
-[![screenshot of Cline plan mode](assets/15c-plan-mode-2.webp)](assets/15c-plan-mode-2.webp)
+[![screenshot of Cline plan mode](images/15c-plan-mode-2.avif)](images/15c-plan-mode-2.avif)
 
 This is where the real value is, honestly. Before the model writes a single line of code, you get to look at its plan and say "no, that's wrong, do it this way instead." You can go back and forth with it, refine the plan, poke holes in it. It's like reviewing a design doc before someone starts coding. Only when you're happy with the plan do you move on.
 
@@ -232,21 +232,21 @@ Cline gives you two ways to do this.
 
 The first is the `@` mention. Type `@` in the prompt message box and you can point the model at specific files in your project. If you're working on a bug in `auth/handler.go`, just type `@auth/handler.go` and it'll pull that file into the conversation.
 
-[![screenshot of the @ mention file picker in the Cline prompt box](assets/16-the-at-mention-file-picker-in-the-cline-prompt-box.webp)](assets/16-the-at-mention-file-picker-in-the-cline-prompt-box.webp)
+[![screenshot of the @ mention file picker in the Cline prompt box](images/16-the-at-mention-file-picker-in-the-cline-prompt-box.avif)](images/16-the-at-mention-file-picker-in-the-cline-prompt-box.avif)
 
 The second is the `+` button at the bottom of the prompt message box. This lets you add external context (things outside your project) that are relevant, like documentation or reference material.
 
-[![screenshot of the + button and its options at the bottom of the Cline prompt box](assets/17-plus-button-and-its-options-at-the-bottom-of-the-cline-prompt-box.webp)](assets/17-plus-button-and-its-options-at-the-bottom-of-the-cline-prompt-box.webp)
+[![screenshot of the + button and its options at the bottom of the Cline prompt box](images/17-plus-button-and-its-options-at-the-bottom-of-the-cline-prompt-box.avif)](images/17-plus-button-and-its-options-at-the-bottom-of-the-cline-prompt-box.avif)
 
 ### From plan to execution
 
 Once you're satisfied with the plan, toggle over to **Act mode**. If a plan has already been generated in Plan mode, the model starts executing it immediately, no additional prompt needed. It just goes.
 
-[![screenshot of Cline act mode](assets/17b-act-mode.webp)](assets/17b-act-mode.webp)
+[![screenshot of Cline act mode](images/17b-act-mode.avif)](images/17b-act-mode.avif)
 
 As it works, Cline opens a diff view in your editor that looks like VS Code's built-in git diff, the familiar red and green line-by-line comparison. The title bar will say **"Cline's Changes"** so you know what you're looking at. You can watch the model's progress in real time as it edits files.
 
-[![screenshot of the Cline Changes diff view while the model is working](assets/18-cline-changes-diff-view-while-the-model-is-working.gif)](assets/18-cline-changes-diff-view-while-the-model-is-working.gif)
+[![screenshot of the Cline Changes diff view while the model is working](images/18-cline-changes-diff-view-while-the-model-is-working.gif)](images/18-cline-changes-diff-view-while-the-model-is-working.gif)
 
 ### Approvals and permissions
 
@@ -254,11 +254,11 @@ Here's an important detail: **the model can't save anything without your say-so.
 
 The same applies to running commands. If the model wants to execute something on the command line (like running tests), it'll ask for your approval first before doing so.
 
-[![screenshot of the Cline Save confirmation prompt](assets/19-cline-save-confirmation-prompt.webp)](assets/19-cline-save-confirmation-prompt.webp)
+[![screenshot of the Cline Save confirmation prompt](images/19-cline-save-confirmation-prompt.avif)](images/19-cline-save-confirmation-prompt.avif)
 
 That said, if you find yourself clicking Save on every single small change and it's slowing you down, you can adjust this. At the top of the prompt message box, there's an **Auto-approve** setting. You can configure which actions the model is allowed to do without asking. Saving files, running specific commands, and so on. I'd recommend keeping it conservative when you're starting out, and loosening it once you get a feel for how the model behaves.
 
-[![screenshot of the Auto-approve configuration area](assets/20-auto-approve-configuration-area.webp)](assets/20-auto-approve-configuration-area.webp)
+[![screenshot of the Auto-approve configuration area](images/20-auto-approve-configuration-area.avif)](images/20-auto-approve-configuration-area.avif)
 
 ### Watching your token usage and cost
 
@@ -266,11 +266,11 @@ At the very top of the Cline extension, you'll see a **progress bar** showing yo
 
 This bar **resets every time you start a new task**, so each conversation in Cline is its own isolated session.
 
-[![screenshot of the token context usage progress bar at the top of the Cline extension](assets/21-token-context-usage-progress-bar-at-the-top-of-the-cline-extension.webp)](assets/21-token-context-usage-progress-bar-at-the-top-of-the-cline-extension.webp)
+[![screenshot of the token context usage progress bar at the top of the Cline extension](images/21-token-context-usage-progress-bar-at-the-top-of-the-cline-extension.avif)](images/21-token-context-usage-progress-bar-at-the-top-of-the-cline-extension.avif)
 
 Right above that bar, there's a **cost counter** showing how many dollars the current task has consumed on OpenRouter. For Step 3.5 Flash it'll stay at $0.00, but this becomes very useful once you start experimenting with paid models. It's the fastest way to keep an eye on your spend without having to log into OpenRouter every time.
 
-[![screenshot of the cost counter above the token usage bar](assets/22-cost-counter-above-the-token-usage-bar.webp)](assets/22-cost-counter-above-the-token-usage-bar.webp)
+[![screenshot of the cost counter above the token usage bar](images/22-cost-counter-above-the-token-usage-bar.avif)](images/22-cost-counter-above-the-token-usage-bar.avif)
 
 ### `.clinerules` — giving the model standing instructions
 
@@ -285,7 +285,7 @@ Think of it like a README for the AI. You can put anything there that you'd othe
 
 This is similar in spirit to `AGENTS.md` (used by some other AI coding tools) or Claude's project-level instructions. It's just Cline's version of the same idea.
 
-[![screenshot of a .clinerules file open in VS Code](assets/23-clinerules-file-open-in-vscode.webp)](assets/23-clinerules-file-open-in-vscode.webp)
+[![screenshot of a .clinerules file open in VS Code](images/23-clinerules-file-open-in-vscode.avif)](images/23-clinerules-file-open-in-vscode.avif)
 
 ### When the model isn't enough
 
@@ -293,7 +293,7 @@ One thing I appreciated about Cline: it's upfront when it thinks you might be hi
 
 > _Cline uses complex prompts and iterative task execution that may be challenging for less capable models. For best results, it's recommended to use Claude 4 Sonnet for its advanced agentic coding capabilities._
 
-[![screenshot of cline warning to switchto other models](assets/24-cline-recommends-other-model-warning.webp)](assets/24-cline-recommends-other-model-warning.webp)
+[![screenshot of cline warning to switchto other models](images/24-cline-recommends-other-model-warning.avif)](images/24-cline-recommends-other-model-warning.avif)
 
 It's a helpful nudge. It doesn't stop you from continuing. You can ignore it and keep going, but it's a signal that the task might be too heavy for the current model and you might want to swap to something more capable. If you start seeing this, it's worth considering whether to switch to a stronger (paid) model for that particular task. For the medium-complexity stuff Step 3.5 Flash handles well, you won't see it.
 

@@ -3,7 +3,7 @@ title: "Migrating Vidio’s Transcoding System to GKE: A Retrospective"
 date: 2025-12-20
 draft: false
 ---
-![system-abstract-vector](system-abstract-vector.webp)
+![system-abstract-vector](images/system-abstract-vector.avif)
 
 ***Disclaimer:** This article is a personal retrospective reconstructed from my own memory. At the time of writing, I no longer have access to Vidio’s internal documentation, source code, or design artifacts. Where exact details are uncertain, I intentionally use probabilistic language to reflect the limits of recall. The purpose of this writing is not to provide a precise historical record, but to reflect on the system, the migration process, and the engineering trade-offs involved during my time on Vidio’s video infra team.*
 
@@ -26,7 +26,7 @@ Vidio’s main content streaming systems can be broadly categorized into two typ
 * **Video on Demand (VOD) streaming:** This is for pre-recorded videos that users can watch anytime.
 * **Live streaming:** This system broadcasts content in real-time, such as TV channels, sports events, or gaming streams. Creators can stream from a webcam, mobile device, or through encoding software.
 
-![vidio-transcoding-diagram](vidio-transcoding-diagram.webp)
+![vidio-transcoding-diagram](images/vidio-transcoding-diagram.avif)
 
 Technically, Vidio uses adaptive bitrate streaming for both systems so the quality adjusts automatically to the viewer’s internet connection. When a user clicks play, their device receives the video in small segments to be consumed smoothly by the players.
 
@@ -56,7 +56,7 @@ Before the GKE migration, Vidio already used Google Cloud Platform across their 
 
 As I explained in the previous section, Vidio has two streaming systems, the VOD streaming and Live streaming. All of the components in both systems use Ruby, either Rails or Executable scripts.
 
-![vidio-transcoding-old-architecture](vidio-transcoding-old-architecture.webp)
+![vidio-transcoding-old-architecture](images/vidio-transcoding-old-architecture.avif)
 
 #### **3.1.1 VOD Streaming Components**
 
@@ -88,7 +88,7 @@ As I explained in the previous section, Vidio has two streaming systems, the VOD
 
 Within our video infra team, we utilize Google Compute Engine as our primary runtime. We have Jenkins to serve as our automation workflow, including CI & CD pipeline, in which testing and deployment are part of. This Jenkins was a shared internal tool across teams, with the video infra team maintaining its own deployment jobs and scripts.
 
-![vidio-transcoding-old-deployment](vidio-transcoding-old-deployment.webp)
+![vidio-transcoding-old-deployment](images/vidio-transcoding-old-deployment.avif)
 
 Jenkins provided deployment jobs using Google Cloud CLI inside dedicated VM to do everything deployment-related:
 
@@ -205,7 +205,7 @@ In contrast to live streaming pipeline migration, the less bursty nature of VOD 
 
 Parallel migration mainly concerned the LS pipeline. We began by creating a whitelist of which LS contents would be migrated first. The team coordinated with PMs and Live Ops. PMs gathered the list of LS content, they decided to choose low-traffic regional TV channels for the migration candidate. The remaining LS contents, especially the high-demand sports events and channels, stayed in the existing GCE-based pipeline.
 
-![vidio-transcoding-gke-migration-execution](vidio-transcoding-gke-migration-execution.webp)
+![vidio-transcoding-gke-migration-execution](images/vidio-transcoding-gke-migration-execution.avif)
 
 After the team prepared all the Kubernetes infrastructure and ceremonies, we coordinated with Live Ops to roll out the whitelisted LS one by one. LiveOps had schedules in which the whitelisted LS had the lowest traffic. When LiveOps gave us notice, we prepared the rollout by switching the source of the LS to a temporary “Channel is under maintenance” banner. LiveOps then routed it to the new streaming RTMP ingest URL from the migrated LS pipeline. The order for the rollout is as follows: 
 
@@ -240,7 +240,7 @@ This was my first experience working with Docker and containerization while guid
 
 Provisioner has two internal endpoints: creates and delete, each to create and delete Transcoder components on demand. A high demand LS like sports will have higher specs than low-audience regional TV channels, for example.
 
-![vidio-provisioner-component](vidio-provisioner-component.webp)
+![vidio-provisioner-component](images/vidio-provisioner-component.avif)
 
 The Provisioner would also separate between normal Transcoder and DRM transcoder. This separation is because they’re using different Packager (the next component after Transcoder in the pipeline). Separating them makes more sense to keep the container as light and stateless as possible.
 
@@ -358,7 +358,7 @@ Although the Kubernetes node specifications were not yet heavily optimized, at l
 
 The concurrency from switching to Go in LS transcoding workers appeared more predictable when observed through resource telemetry dashboards. The time between deployment and accepting streams appeared shorter in practice.
 
-![vidio-provisioning-comparison](vidio-provisioning-comparison.webp)
+![vidio-provisioning-comparison](images/vidio-provisioning-comparison.avif)
 
 Resource requests and limits could be defined per workload, which gave the team more flexibility than the VM-based setup. Though the team still need to be cautious during peak events,
 

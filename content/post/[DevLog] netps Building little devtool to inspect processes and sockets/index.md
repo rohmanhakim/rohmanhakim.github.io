@@ -12,7 +12,7 @@ categories:
     - devlog
 ---
 
-![netps-screenshot](netps-ss.webp)
+![netps-screenshot](images/netps-ss.avif)
 
 I’ve been hacking on a new side project lately: a Linux TUI tool that shows processes and the sockets they open, all in one place. Think `ps` + `ss` + a bit of *“wait, what is actually listening on this port right now?”* but interactive and terminal-first.
 
