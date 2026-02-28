@@ -16,7 +16,7 @@ description: "Learn how to design and create a Go retry handler for concurrent p
 
 ![assembly-line](images/assembly-line.avif)
 
-When working as a backend engineer, we'll inevitably end up building pipelines. Video transcoding, ETL jobs, file conversions, web scraping — pipelines are everywhere in backend systems. And one thing every pipeline has to deal with is retrying failed operations.
+When working as a backend engineer, we'll inevitably end up building pipelines. [Video transcoding](../a-retrospective-on-migrating-vidios-transcoding-system-to-gke/), ETL jobs, file conversions, web scraping — pipelines are everywhere in backend systems. And one thing every pipeline has to deal with is retrying failed operations.
 
 The common solution is simple: wrap the operation in a loop, sleep for a bit, and try again. For a lot of lightweight, single-worker scenarios, that's honestly fine. But once our pipeline is running dozens or hundreds of concurrent workers, that naive approach starts introducing subtle problems we won't notice until production.
 
@@ -187,7 +187,7 @@ Exponential backoff solves the "don't hammer a struggling service" problem. But 
 
 Imagine we have 50 concurrent workers. They all hit the same downstream API. The API goes down at 14:00:00. All 50 workers fail at almost the same moment, and they all start their backoff timers at almost the same moment. With a 1s initial delay and a multiplier of 2, they'll all retry at 14:00:01. They all fail again. They all sleep for 2 seconds. They all retry at 14:00:03. And so on.
 
-This is the **thundering herd problem**. Instead of spreading retries out across time, our workers stay perfectly synchronized, attacking the recovering service in waves. Each wave can knock it back down just as it's starting to recover. The backoff didn't help; it just added rhythm to the problem.
+This is the [**thundering herd problem**](https://en.wikipedia.org/wiki/Thundering_herd_problem). Instead of spreading retries out across time, our workers stay perfectly synchronized, attacking the recovering service in waves. Each wave can knock it back down just as it's starting to recover. The backoff didn't help, it just added rhythm to the problem.
 
 ![two timelines side by side. Top: "Without jitter" — 50 worker dots all retrying at the same timestamps, shown as vertical spikes. Bottom: "With jitter" — the same 50 workers retrying spread across a wider window, shown as scattered dots. Label on the top is "thundering herd" and the bottom is "distributed load"](images/with-without-jitter-comparisons.avif)
 
@@ -269,7 +269,7 @@ func WithRand(src rand.Source) RetryOption {
 }
 ```
 
-When we write tests, we can inject a fixed-seed PRNG locally. Go's Functional Options pattern make this looks elegant:
+When we write tests, we can inject a fixed-seed PRNG locally. Go's [Functional Options](https://dave.cheney.net/2014/10/17/functional-options-for-friendly-apis) pattern make this looks elegant:
 
 ```go
 // In a test:
@@ -384,7 +384,7 @@ func (e *AuthError) Error() string            { return e.msg }
 func (e *AuthError) RetryPolicy() RetryPolicy { return RetryPolicyNever }
 ```
 
-Now when the retry handler receives an `AuthError`, it knows to stop immediately without any special casing. The handler stays dumb and general; the errors carry the intelligence.
+Now when the retry handler receives an `AuthError`, it knows to stop immediately without any special casing. The handler stays dumb and general, the errors carry the intelligence.
 
 I wrote other post about [designing error domain](../designing-error-returns-in-go-a-case-study-in-domain-orchestration-separation.md). 
 
@@ -474,7 +474,7 @@ func (r Result[T]) Decompose() (T, int, error) {
 
 The return type of `Decompose()` is `T`. It adapts to whatever the original operation returned.
 
-Generics aren't unique to Go. The same concept exists across many languages, just with different syntax: `<T>` in Java, C#, Kotlin, and Swift; `template<typename T>` in C++; type parameters in TypeScript. If you're building a retry handler in any of these, the same design applies. The operation is a function parameterized over its return type, the result wraps that type, and the handler stays completely general.
+Generics aren't unique to Go. The same concept exists across many languages, just with different syntax: `<T>` in Java, C#, Kotlin, and Swift. `template<typename T>` in C++. `type` parameters in TypeScript. If you're building a retry handler in any of these, the same design applies. The operation is a function parameterized over its return type, the result wraps that type, and the handler stays completely general.
 
 The payoff is that we write the retry logic once: with all the backoff, jitter, context cancellation, and error policy logic, and it works for every stage in our pipeline, regardless of what each stage produces.
 
