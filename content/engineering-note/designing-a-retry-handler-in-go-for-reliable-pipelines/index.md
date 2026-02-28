@@ -10,6 +10,8 @@ tags:
     - error-handling
     - retry-handling
     - observability
+summary: "Designs a production-grade retry handler in Go for concurrent pipeline systems, covering error classification (auto/manual/never retry), exponential backoff with jitter to prevent thundering herds, context-aware cancellation, observability hooks, result struct vs. multi-value returns, and a generic type-safe API to make retry logic reusable across different pipeline stages"
+description: "Learn how to design and create a Go retry handler for concurrent pipelines, supporting error classification, exponential backoff, cancellation, observability, and a type-safe API for reusable retry logic."
 ---
 
 ![assembly-line](images/assembly-line.avif)

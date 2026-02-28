@@ -2,6 +2,8 @@
 title: "Migrating Vidio’s Transcoding System to GKE: A Retrospective"
 date: 2025-12-20
 draft: false
+summary: "A detailed retrospective on migrating Vidio’s video transcoding infrastructure from a VM-based Google Compute Engine architecture to Google Kubernetes Engine (GKE). This article explores the original machine-centric design, operational pain points, live-stream zero-downtime constraints, containerization strategy, introduction of a Go-based worker and Provisioner component, and the real-world outcomes on deployment confidence, scaling, cost, and team ownership."
+description: "A retrospective on migrating Vidio's video transcoding from Google Compute Engine to Google Kubernetes Engine, covering design challenges, zero-downtime live streams, containerization, and outcomes in deployment, scaling, cost, and team ownership."
 ---
 ![system-abstract-vector](images/system-abstract-vector.avif)
 

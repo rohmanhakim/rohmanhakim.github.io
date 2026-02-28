@@ -9,6 +9,7 @@ tags:
     - amd
     - asus
 summary: "A personal review and experience with the ASUS ZenBook S16, covering specs, pros, cons, and why it was chosen as a backup workstation."
+description: "A personal review and experience with the ASUS ZenBook S16, covering specs, pros, cons, and why it was chosen as a backup workstation."
 ---
 
 I just bought a new laptop, [ASUS ZenBook S16](https://www.asus.com/laptops/for-home/zenbook/asus-zenbook-s-16-um5606/). This is intended to be my backup workstation in case my main computer gets broken or I'm traveling and somehow need to work.

@@ -1,4 +1,7 @@
 {{ if and (eq .Kind "page") (or (eq .Section "post") (eq .Section "engineering-note")) }}
+  {{ with .Params.description }}
+    <meta name="description" content="{{ . }}" />
+  {{ end }}
   <link rel="stylesheet" href="{{ "css/mini-toc.css" | relURL }}">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

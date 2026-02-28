@@ -9,6 +9,7 @@ tags:
     - logging
     - observability
 summary: "Explore how to design error-returning functions in Go that separate domain logic from orchestration concerns. Learn why a custom RepairableResult type beats (bool, error) and error-only patterns when building observable, testable, and reusable validation logic in production systems."
+description: "Learn to design error-returning functions in Go that distinguish domain logic from orchestration, and discover why a custom RepairableResult type is preferable to (bool, error) for building observable and testable validation logic. "
 ---
 I recently refactored a Go codebase where I had a checking function `isRepairable()` that returns a boolean. Inside, it has several sequential checks with an early return pattern to validate against business rules:
 

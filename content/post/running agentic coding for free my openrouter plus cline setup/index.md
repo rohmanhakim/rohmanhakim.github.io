@@ -20,6 +20,8 @@ tags:
 categories: 
     - tech
     - tutorial
+summary: "Step-by-step guide to setting up free agentic coding in VS Code using OpenRouter and Cline with the free stepfun/step-3.5-flash model from StepFun. Covers account creation, API key setup, billing configuration, model selection, Plan vs Act workflow, context management, .clinerules, token usage monitoring, and comparisons with models from OpenAI, Google, Anthropic, Moonshot AI, and MiniMax. Ideal for developers who want a zero-cost, practical introduction to autonomous AI coding workflows."
+description: "Guide to setting up free agentic coding in VS Code with OpenRouter and StepFun's step-3.5-flash model. Includes account creation, API setup, model selection, and comparisons with OpenAI and others. Ideal for developers seeking a no-cost intro to autonomous AI coding."
 ---
 
 I've been playing around with agentic coding lately, letting an AI work through coding tasks with minimal hand-holding, and recently stumbled onto a setup that's genuinely good and costs nothing to run. This post walks through exactly how I got it working, from zero to a working environment, in about ten minutes.
