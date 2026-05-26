@@ -42,7 +42,7 @@ for _, c := range word {
 
 Notice that the range of the data (letters) has the size of 26 (a-z). So instead i can just store it inside a single 32-bit integer as bits (1 for true, 0 for false).
 
-For example a string "ab" can be stored as: 
+For example, appearances of alphabets inside string "abe" can be stored as: 
 
 ![Bitmask representation of 26-characters english alphabets](1-bitmask.svg)
 
@@ -272,4 +272,4 @@ func (b BitSet) OnesCount() int {
 
 This stays fast because each `uint64` chunk still uses the hardware `POPCNT` instruction. This is also what competitive programmers and standard libraries actually use. We manually chunk the bits across multiple `uint64`s.
 
-The `[]uint64` slice approach is also what libraries like [`github.com/bits-and-blooms/bitset`](github.com/bits-and-blooms/bitset) give us, with AND/OR/count already implemented — worth knowing it exists for contest or production use.
+The `[]uint64` slice approach is also what libraries like [`github.com/bits-and-blooms/bitset`](github.com/bits-and-blooms/bitset) give us, with AND/OR/count already implemented, worth knowing it exists for contest or production use.
