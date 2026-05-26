@@ -73,7 +73,7 @@ Explanation:
 - In Go, a rune (character) just an alias of 32-bit integer (int32) for its [Unicode](https://en.wikipedia.org/wiki/Unicode) code point.
 - We want the character `'a'` to always reserve the index 0, so subtracting a character with it will return an index relative to it. For Example `'e' - 'a'` would the same as `101 - 97` , therefore will return `4` as we want the character `e` to be stored in index 4
 - `1 << index` : shifts a `1` into the index
-- `|=` : apply bitwise `OR` in the `appears` variable without disturbing the other bits. For example if the existing bits are `0101`, the operation `0101 |= 00101 will return `0111`
+- `|=` : apply bitwise `OR` in the `appears` variable without disturbing the other bits. For example if the existing bits are `0101`, the operation `0101 |= 0011 will return `0111`
 
 ### Counting the data
 
