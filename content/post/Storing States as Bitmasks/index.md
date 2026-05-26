@@ -79,7 +79,7 @@ Explanation:
 
 To count how many "set" bits are in the data (for 32-bit integer):
 ```go
-import(
+import (
 	"math/bits"
 )
 
@@ -179,7 +179,7 @@ return bits.OnesCount32(uint32(lower & upper))
 
 Full code:
 ```go
-import(
+import (
 	"math/bits"
 )
 func numberOfSpecialChars(word string) int { 
