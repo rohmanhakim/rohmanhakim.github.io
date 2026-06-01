@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>K Pairs Smallest Sums — Grid Walkthrough</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<style>
+  :root{
+    --bg: #0d0d0f;
+    --fg: #e8e6e0;
+    --muted: #666666;
+    --fs-h1: 24px;
+    --fs-btn: 18px;
+    --fs-step-info: 18px;
+    --fs-log: 16px;
+    --fs-legend: 16px;
+    --button-bg: #1a1a1e;
+    --button-color: #e8e6e0;
+    --button-border: #333333;
+    --button-hover-bg: #252528;
+    --button-hover-border: #555555;
+    --step-info: #555555;
+    --log-text: #888888;
+    --log-bg: #0a0a0c;
+    --log-border: #222222;
+    --entry: #e8e6e0;
+    --pair: #f0c040;
+    --sum: #60c0a0;
+    --legend-inheap: #3a6ea8;
+    --legend-justpushed: #2a4a2a;
+    --legend-unvisited: #1a1a1e;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    min-height: 100vh;
+    padding: 0;
+    gap: 24px;
+  }
+  h1 {
+    font-size: var(--fs-h1);
+    color: var(--muted);
+    font-weight: normal;
+  }
+  #canvas-container canvas {
+    display: block;
+  }
+  #controls {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+  button {
+    background: var(--button-bg);
+    color: var(--button-color);
+    border: 1px solid var(--button-border);
+    padding: 10px 24px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-size: var(--fs-btn);
+    letter-spacing: 0.15em;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  button:hover { background: var(--button-hover-bg); border-color: var(--button-hover-border); }
+  button:disabled { opacity: 0.3; cursor: default; }
+  #step-info {
+    font-size: var(--fs-step-info);
+    color: var(--step-info);
+    letter-spacing: 0.1em;
+    min-width: 120px;
+    text-align: center;
+  }
+  #log {
+    width: 540px;
+    max-height: 240px;
+    overflow-y: auto;
+    border: 1px solid var(--log-border);
+    padding: 12px 16px;
+    font-size: var(--fs-log);
+    line-height: 1.8;
+    color: var(--log-text);
+    background: var(--log-bg);
+  }
+  #log .entry { color: var(--entry); }
+  #log .entry span.pair { color: var(--pair); }
+  #log .entry span.sum { color: var(--sum); }
+  #legend {
+    display: flex;
+    gap: 24px;
+    font-size: var(--fs-legend);
+    letter-spacing: 0.1em;
+    color: var(--step-info);
+  }
+  .legend-item { display: flex; align-items: center; gap: 8px; }
+  .swatch { width: 12px; height: 12px; border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<h1>K Pairs with Smallest Sums — Grid Walkthrough</h1>
+<div id="canvas-container"></div>
+
+<div id="controls">
+  <button id="btn-prev" disabled>← Prev</button>
+  <div id="step-info">Step 0</div>
+  <button id="btn-next">Next →</button>
+  <button id="btn-reset">Reset</button>
+</div>
+
+<div id="legend">
+  <div class="legend-item"><div class="swatch" style="background:var(--pair)"></div> Popped (output)</div>
+  <div class="legend-item"><div class="swatch" style="background:var(--legend-inheap)"></div> In heap</div>
+  <div class="legend-item"><div class="swatch" style="background:var(--legend-justpushed)"></div> Just pushed</div>
+  <div class="legend-item"><div class="swatch" style="background:var(--legend-unvisited)"></div> Unvisited</div>
+</div>
+
+<div id="log"><span style="color:var(--step-info)">— log will appear here —</span></div>
+
+<script>
+const nums1 = [1, 7, 10, 11];
+const nums2 = [2, 4, 6, 8];
+const K = 6;
+
+// Theme groups: `dark` and `light`. Change `CURRENT_THEME` to 'light' to switch.
+const THEMES = {
+  dark: {
+    bg: '#0d0d0f',
+    fg: '#e8e6e0',
+    muted: '#666666',
+    entry: '#e8e6e0',
+    pair: '#f0c040',
+    sum: '#60c0a0',
+    inheap: '#3a6ea8',
+    justpushed: '#2a4a2a',
+    unvisited: '#1a1a1e',
+    // log colors
+    logText: '#888888',
+    logBg: '#0a0a0c',
+    logBorder: '#222222',
+    stepInfo: '#555555',
+
+    cellBgPopped: '#322a0a',
+    cellFgPopped: '#f0c040',
+    cellBgJustPushed: '#14301c',
+    cellFgJustPushed: '#64dc8c',
+    cellBgInHeap: '#122644',
+    cellFgInHeap: '#64a0f0',
+    cellBgDefault: '#16161a',
+    cellFgDefault: '#50505a',
+    borderDefault: '#28282e',
+    label: '#64646e',
+    // button colors
+    buttonBg: '#1a1a1e',
+    buttonColor: '#e8e6e0',
+    buttonBorder: '#333333',
+    buttonHoverBg: '#252528',
+    buttonHoverBorder: '#555555'
+  },
+  light: {
+    bg: '#ffffff',
+    fg: '#101214',
+    muted: '#4a4a4f',
+    entry: '#101214',
+    pair: '#a56b10',
+    sum: '#157a63',
+    inheap: '#1f5f8a',
+    justpushed: '#2e7d3a',
+    unvisited: '#eaeaea',
+    // log colors for light
+    logText: '#666666',
+    logBg: '#f2f2f2',
+    logBorder: '#e6e6e9',
+    stepInfo: '#444444',
+
+    cellBgPopped: '#fff6e6',
+    cellFgPopped: '#a56b10',
+    cellBgJustPushed: '#e9f6ee',
+    cellFgJustPushed: '#2e7d3a',
+    cellBgInHeap: '#e8f1fb',
+    cellFgInHeap: '#2f6fbf',
+    cellBgDefault: '#f2f2f2',
+    cellFgDefault: '#3c3c42',
+    borderDefault: '#e0e0e6',
+    label: '#333333',
+    // button colors for light theme
+    buttonBg: '#ffffff',
+    buttonColor: '#101214',
+    buttonBorder: '#d1d1d6',
+    buttonHoverBg: '#f2f2f4',
+    buttonHoverBorder: '#bdbdc1'
+  }
+};
+
+// Hardcode the active theme here: 'dark' or 'light'
+const CURRENT_THEME = 'light';
+
+// Active color aliases used throughout the drawing code
+let COLORS = THEMES[CURRENT_THEME];
+
+// Alpha constants
+const ALPHAS = {
+  border: 180,
+  pairLabel: 160,
+  poppedShadow: 0.5,
+  justpushedShadow: 0.4
+};
+
+function hexToRgba(hex, a){
+  if(!hex) return `rgba(0,0,0,${a})`;
+  const h = hex.replace('#','');
+  const bigint = parseInt(h,16);
+  const r = (bigint >> 16) & 255;
+  const g = (bigint >> 8) & 255;
+  const b = bigint & 255;
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+// Apply theme values to CSS variables (so DOM elements follow the theme)
+function applyTheme(name){
+  const t = THEMES[name];
+  if(!t) return;
+  const root = document.documentElement.style;
+  root.setProperty('--bg', t.bg);
+  root.setProperty('--fg', t.fg);
+  root.setProperty('--muted', t.muted);
+  root.setProperty('--entry', t.entry);
+  root.setProperty('--pair', t.pair);
+  root.setProperty('--sum', t.sum);
+  root.setProperty('--legend-inheap', t.inheap);
+  root.setProperty('--legend-justpushed', t.justpushed);
+  root.setProperty('--legend-unvisited', t.unvisited);
+  // log-related vars
+  if (t.logText) root.setProperty('--log-text', t.logText);
+  if (t.logBg) root.setProperty('--log-bg', t.logBg);
+  if (t.logBorder) root.setProperty('--log-border', t.logBorder);
+  if (t.stepInfo) root.setProperty('--step-info', t.stepInfo);
+  // button-related vars
+  if (t.buttonBg) root.setProperty('--button-bg', t.buttonBg);
+  if (t.buttonColor) root.setProperty('--button-color', t.buttonColor);
+  if (t.buttonBorder) root.setProperty('--button-border', t.buttonBorder);
+  if (t.buttonHoverBg) root.setProperty('--button-hover-bg', t.buttonHoverBg);
+  if (t.buttonHoverBorder) root.setProperty('--button-hover-border', t.buttonHoverBorder);
+  COLORS = t;
+}
+
+// Apply at load (hardcoded switch)
+applyTheme(CURRENT_THEME);
+
+// Simulate all steps upfront
+function simulate(nums1, nums2, k) {
+  // MinHeap by sum, storing [val1, val2, i, j]
+  class Heap {
+    constructor() { this.data = []; }
+    push(item) {
+      this.data.push(item);
+      this._bubbleUp(this.data.length - 1);
+    }
+    pop() {
+      const top = this.data[0];
+      const last = this.data.pop();
+      if (this.data.length > 0) {
+        this.data[0] = last;
+        this._sinkDown(0);
+      }
+      return top;
+    }
+    _bubbleUp(i) {
+      while (i > 0) {
+        const p = Math.floor((i - 1) / 2);
+        if (this._sum(this.data[p]) <= this._sum(this.data[i])) break;
+        [this.data[p], this.data[i]] = [this.data[i], this.data[p]];
+        i = p;
+      }
+    }
+    _sinkDown(i) {
+      const n = this.data.length;
+      while (true) {
+        let min = i, l = 2*i+1, r = 2*i+2;
+        if (l < n && this._sum(this.data[l]) < this._sum(this.data[min])) min = l;
+        if (r < n && this._sum(this.data[r]) < this._sum(this.data[min])) min = r;
+        if (min === i) break;
+        [this.data[min], this.data[i]] = [this.data[i], this.data[min]];
+        i = min;
+      }
+    }
+    _sum(item) { return item[0] + item[1]; }
+    get size() { return this.data.length; }
+    snapshot() { return this.data.map(x => [...x]); }
+  }
+
+  const steps = [];
+  const h = new Heap();
+
+  // Seed step
+  const seedPushed = [];
+  for (let i = 0; i < Math.min(nums1.length, k); i++) {
+    h.push([nums1[i], nums2[0], i, 0]);
+    seedPushed.push([i, 0]);
+  }
+  steps.push({
+    type: 'seed',
+    heapSnap: h.snapshot(),
+    popped: null,
+    pushed: seedPushed.map(([i,j]) => [i,j]),
+    output: [],
+    description: `Seed heap with (nums1[i], nums2[0]) for i=0..${Math.min(nums1.length,k)-1}`
+  });
+
+  const output = [];
+  while (output.length < k && h.size > 0) {
+    const curr = h.pop();
+    const [u, v, i, j] = curr;
+    output.push([u, v]);
+
+    const newlyPushed = [];
+    if (j + 1 < nums2.length) {
+      h.push([u, nums2[j+1], i, j+1]);
+      newlyPushed.push([i, j+1]);
+    }
+
+    steps.push({
+      type: 'pop',
+      heapSnap: h.snapshot(),
+      popped: [i, j],
+      pushed: newlyPushed,
+      output: output.map(x => [...x]),
+      description: `Pop (${u},${v}) sum=${u+v} → push (${u},${nums2[j+1] ?? '—'})${j+1 < nums2.length ? ` sum=${u+(nums2[j+1])}` : ' (end of nums2)'}`
+    });
+  }
+
+  return steps;
+}
+
+const steps = simulate(nums1, nums2, K);
+let currentStep = 0;
+
+// p5 sketch
+new p5(function(p) {
+  const CELL = 80;
+  const PAD = 64;
+  const LABEL = 40;
+  const rows = nums1.length;
+  const cols = nums2.length;
+  const W = PAD + LABEL + cols * CELL + PAD + 100;
+  const H = PAD + LABEL + rows * CELL;
+  const CELL_SUM_TEXT_SIZE = 24
+  const CELL_PAIR_TEXT_SIZE = 14
+  const CELL_SUM_PAIR_GAP = 16
+  const RIGHT_INFO_TITLE_TEXT_SIZE = 16
+  const RIGHT_INFO_ITEM_TEXT_SIZE = 14
+  const RIGHT_INFO_ITEM_GAP = 20
+  // Centralized text sizes for easy theming/tweaks
+  const TEXT = {
+    LARGE: 24,    // main large labels / values
+    MEDIUM: 14,   // medium labels (shared with pair size)
+    SMALL: 12,    // small labels / indices
+    XSMALL: 9,    // badges
+    TITLE: 16     // right-side titles
+  };
+
+  // State per cell: 'unvisited' | 'inheap' | 'popped' | 'justpushed'
+  let cellState = [];
+  let currentPopped = null;
+  let currentPushed = [];
+
+  function resetState() {
+    cellState = Array.from({length: rows}, () => Array(cols).fill('unvisited'));
+    currentPopped = null;
+    currentPushed = [];
+    currentStep = 0;
+    applyStep(0);
+    updateUI();
+    p.redraw();
+  }
+
+  function applyStep(idx) {
+    // Rebuild state from scratch up to idx
+    cellState = Array.from({length: rows}, () => Array(cols).fill('unvisited'));
+    currentPopped = null;
+    currentPushed = [];
+
+    // Collect all heap members and popped cells up to this step
+    const poppedCells = new Set();
+    const heapCells = new Set();
+
+    for (let s = 0; s <= idx; s++) {
+      const st = steps[s];
+      if (st.type === 'pop') {
+        poppedCells.add(`${st.popped[0]},${st.popped[1]}`);
+      }
+    }
+
+    // Current heap snapshot
+    const snap = steps[idx].heapSnap;
+    snap.forEach(([,, i, j]) => heapCells.add(`${i},${j}`));
+
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const key = `${r},${c}`;
+        if (poppedCells.has(key)) cellState[r][c] = 'popped';
+        else if (heapCells.has(key)) cellState[r][c] = 'inheap';
+        else cellState[r][c] = 'unvisited';
+      }
+    }
+
+    if (steps[idx].type === 'pop') {
+      currentPopped = steps[idx].popped;
+    }
+    currentPushed = steps[idx].pushed || [];
+    // Mark justpushed on top
+    currentPushed.forEach(([r,c]) => { cellState[r][c] = 'justpushed'; });
+  }
+
+  function updateUI() {
+    const s = steps[currentStep];
+    document.getElementById('step-info').textContent = `Step ${currentStep} / ${steps.length - 1}`;
+    document.getElementById('btn-prev').disabled = currentStep === 0;
+    document.getElementById('btn-next').disabled = currentStep === steps.length - 1;
+
+    // Log
+    const log = document.getElementById('log');
+    if (currentStep === 0) {
+      log.innerHTML = `<span style="color:var(--sum)">SEED</span> — pushed ${s.pushed.map(([i,j])=>`(${nums1[i]},${nums2[j]})`).join(', ')} into heap`;
+    } else {
+      const entries = [];
+      for (let i = 1; i <= currentStep; i++) {
+        const st = steps[i];
+        const out = st.output[st.output.length - 1];
+        entries.push(`<div class="entry">#${i} <span class="pair">(${out[0]},${out[1]})</span> sum=<span class="sum">${out[0]+out[1]}</span> &nbsp;—&nbsp; ${st.description}</div>`);
+      }
+      log.innerHTML = entries.join('');
+      log.scrollTop = log.scrollHeight;
+    }
+  }
+
+  p.setup = function() {
+    const cnv = p.createCanvas(W, H);
+    cnv.parent('canvas-container');
+    p.textFont('sans-serif');
+    p.noLoop();
+    applyStep(0);
+    updateUI();
+    p.redraw();
+
+    document.getElementById('btn-next').addEventListener('click', () => {
+      if (currentStep < steps.length - 1) {
+        currentStep++;
+        applyStep(currentStep);
+        updateUI();
+        p.redraw();
+      }
+    });
+    document.getElementById('btn-prev').addEventListener('click', () => {
+      if (currentStep > 0) {
+        currentStep--;
+        applyStep(currentStep);
+        updateUI();
+        p.redraw();
+      }
+    });
+    document.getElementById('btn-reset').addEventListener('click', resetState);
+  };
+
+  p.draw = function() {
+    p.background(COLORS.bg);
+
+    const ox = PAD + LABEL;
+    const oy = PAD + LABEL;
+
+    // Draw nums2 column header (single centered label)
+    p.textAlign(p.CENTER, p.CENTER);
+    p.fill(COLORS.label);
+    p.noStroke();
+    p.textSize(TEXT.LARGE);
+    p.text('nums2', ox + (cols * CELL) / 2, PAD - 32);
+    // Draw per-column values (large) then indices (smaller) drawn on top
+    for (let c = 0; c < cols; c++) {
+      const cx = ox + c * CELL + CELL/2;
+      // Value (large) — nudged down closer to the grid
+      p.textSize(TEXT.LARGE);
+      p.fill(COLORS.entry || COLORS.fg);
+      p.textAlign(p.CENTER, p.CENTER);
+      p.text(`${nums2[c]}`, cx, PAD + 20);
+
+      // Index (smaller) drawn on top of the value
+      p.textSize(TEXT.SMALL);
+      p.fill(COLORS.label);
+      p.text(`[${c}]`, cx, PAD - 4);
+    }
+
+    // Draw nums1 row header (single vertical label)
+    p.textAlign(p.CENTER, p.CENTER);
+    p.fill(COLORS.label);
+    p.noStroke();
+    p.textSize(TEXT.LARGE);
+    p.push();
+    p.translate(PAD - 56, oy + (rows * CELL) / 2);
+    p.rotate(-Math.PI / 2);
+    p.text('nums1', 0, 0);
+    p.pop();
+    // Draw per-row values (large) and indices (smaller) to their left
+    for (let r = 0; r < rows; r++) {
+      const vy = oy + r * CELL + CELL/2 + 8;
+      const valX = PAD - 8;    // value positioned left of grid
+      const idxX = PAD - 36;   // index positioned left of value
+
+      // Value (large)
+      p.textSize(TEXT.LARGE);
+      p.fill(COLORS.entry || COLORS.fg);
+      p.textAlign(p.CENTER, p.CENTER);
+      p.text(`${nums1[r]}`, valX + 20, vy);
+
+      // Index (smaller) to the left of the value
+      p.textSize(TEXT.SMALL);
+      p.fill(COLORS.label);
+      p.textAlign(p.CENTER, p.CENTER);
+      p.text(`[${r}]`, idxX + 20, vy);
+    }
+
+    // Draw cells
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const x = ox + c * CELL;
+        const y = oy + r * CELL;
+        const state = cellState[r][c];
+
+        // Cell background
+        let bg, fg, borderCol;
+        if (state === 'popped') {
+          bg = p.color(COLORS.cellBgPopped);
+          fg = p.color(COLORS.cellFgPopped);
+          borderCol = p.color(COLORS.cellFgPopped);
+          borderCol.setAlpha(ALPHAS.border);
+        } else if (state === 'justpushed') {
+          bg = p.color(COLORS.cellBgJustPushed);
+          fg = p.color(COLORS.cellFgJustPushed);
+          borderCol = p.color(COLORS.cellFgJustPushed);
+          borderCol.setAlpha(ALPHAS.border);
+        } else if (state === 'inheap') {
+          bg = p.color(COLORS.cellBgInHeap);
+          fg = p.color(COLORS.cellFgInHeap);
+          borderCol = p.color(COLORS.cellFgInHeap);
+          borderCol.setAlpha(ALPHAS.border);
+        } else {
+          bg = p.color(COLORS.cellBgDefault);
+          fg = p.color(COLORS.cellFgDefault);
+          borderCol = p.color(COLORS.borderDefault);
+          borderCol.setAlpha(ALPHAS.border);
+        }
+
+        // Highlight current popped with glow
+        if (currentPopped && currentPopped[0] === r && currentPopped[1] === c && currentStep > 0) {
+          p.drawingContext.shadowBlur = 18;
+          p.drawingContext.shadowColor = hexToRgba(COLORS.cellFgPopped, ALPHAS.poppedShadow);
+        } else if (state === 'justpushed') {
+          p.drawingContext.shadowBlur = 12;
+          p.drawingContext.shadowColor = hexToRgba(COLORS.cellFgJustPushed, ALPHAS.justpushedShadow);
+        } else {
+          p.drawingContext.shadowBlur = 0;
+        }
+
+        p.fill(bg);
+        p.stroke(borderCol);
+        p.strokeWeight(1);
+        p.rect(x + 2, y + 2, CELL - 4, CELL - 4, 4);
+        p.drawingContext.shadowBlur = 0;
+
+        // Sum value
+        p.fill(fg);
+        p.noStroke();
+        p.textSize(CELL_SUM_TEXT_SIZE);
+        p.textAlign(p.CENTER, p.CENTER);
+        const sum = nums1[r] + nums2[c];
+        p.text(sum, x + CELL/2, y + CELL/2 - 6);
+
+        // Pair label smaller
+        p.textSize(CELL_PAIR_TEXT_SIZE);
+        p.fill(p.red(fg), p.green(fg), p.blue(fg), ALPHAS.pairLabel);
+        p.text(`(${nums1[r]},${nums2[c]})`, x + CELL/2, y + CELL/2 + CELL_SUM_PAIR_GAP);
+
+        // Output order badge
+        const outIdx = steps[currentStep].output.findIndex(
+          ([u,v]) => u === nums1[r] && v === nums2[c] &&
+            steps.slice(1, currentStep+1).some(s => s.popped && s.popped[0]===r && s.popped[1]===c)
+        );
+        // Badge: show pop order
+        let popOrder = -1;
+        for (let s = 1; s <= currentStep; s++) {
+          if (steps[s].popped && steps[s].popped[0] === r && steps[s].popped[1] === c) {
+            popOrder = s;
+            break;
+          }
+        }
+        if (popOrder > 0) {
+          p.fill(COLORS.cellFgPopped);
+          p.textSize(TEXT.XSMALL);
+          p.textAlign(p.LEFT, p.TOP);
+          p.text(`#${popOrder}`, x + 6, y + 5);
+        }
+      }
+    }
+
+    // Output list on the right
+    const lx = ox + cols * CELL + 28;
+    p.textAlign(p.LEFT, p.TOP);
+    p.fill(COLORS.label);
+    p.textSize(RIGHT_INFO_TITLE_TEXT_SIZE);
+    p.text('OUTPUT', lx, oy);
+    const out = steps[currentStep].output;
+    for (let i = 0; i < out.length; i++) {
+      p.fill(COLORS.cellFgPopped);
+      p.textSize(RIGHT_INFO_ITEM_TEXT_SIZE);
+      p.text(`#${i+1} (${out[i][0]},${out[i][1]}) = ${out[i][0]+out[i][1]}`, lx, oy + RIGHT_INFO_ITEM_GAP + i * RIGHT_INFO_ITEM_GAP);
+    }
+    if (out.length === K) {
+      p.fill(COLORS.cellFgJustPushed);
+      p.textSize(RIGHT_INFO_ITEM_TEXT_SIZE);
+      p.text(`✓ done (k=${K})`, lx, oy + RIGHT_INFO_ITEM_GAP + out.length * RIGHT_INFO_ITEM_GAP + 8);
+    }
+
+    // Heap contents
+    const hx = lx;
+    const hy = oy + rows * CELL - 100;
+    p.fill(COLORS.label);
+    p.textSize(RIGHT_INFO_TITLE_TEXT_SIZE);
+    p.text('HEAP', hx, hy);
+    const snap = steps[currentStep].heapSnap;
+    const sorted = [...snap].sort((a,b) => (a[0]+a[1])-(b[0]+b[1]));
+    sorted.forEach(([u,v,,], idx) => {
+      p.fill(COLORS.cellFgInHeap);
+      p.textSize(RIGHT_INFO_ITEM_TEXT_SIZE);
+      p.text(`(${u},${v})=${u+v}`, hx, hy + RIGHT_INFO_ITEM_GAP + idx * RIGHT_INFO_ITEM_GAP);
+    });
+  };
+});
+</script>
+</body>
+</html>
