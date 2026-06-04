@@ -32,6 +32,9 @@ pre {
   padding: 1em;
   overflow-x: auto;
 }
+table {
+  min-width: 640px
+}
 .article-meta {
   text-align: start;
   background: transparent;
