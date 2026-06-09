@@ -507,6 +507,73 @@ For binary heap specifically, many people choose it because it's :
 
 We'll compare binary heap with other d-ary heaps at the end of the post
 
+## Finding Top K Elements
+
+Another practical use of priority queues is maintaining the "top k" smallest or largest elements from a dataset—useful for tracking running statistics, finding outliers, or summarizing large datasets without full sorting.
+
+**The Pattern:**
+- To find **k largest** elements: Use a **min-heap** of size k
+- To find **k smallest** elements: Use a **max-heap** of size k
+
+**Why this works:** The heap root always holds the "worst" candidate among your top k. If you find something better, you evict the worst and insert the new candidate.
+
+**Example: Finding K Largest Numbers**
+
+```go
+// TopKLargest maintains a min-heap to track k largest numbers
+type TopKLargest struct {
+    k int
+    minHeap *MinHeap
+}
+
+func NewTopKLargest(k int) *TopKLargest {
+    h := &MinHeap{}
+    heap.Init(h)
+    return &TopKLargest{k: k, minHeap: h}
+}
+
+func (t *TopKLargest) Add(num int) {
+    if t.minHeap.Len() < t.k {
+        heap.Push(t.minHeap, num)
+    } else if num > (*t.minHeap)[0] {
+        // New number is larger than the k-th largest so far
+        heap.Pop(t.minHeap)
+        heap.Push(t.minHeap, num)
+    }
+}
+
+func (t *TopKLargest) GetTopK() []int {
+    result := make([]int, t.minHeap.Len())
+    // Copy and sort the result (optional)
+    temp := make([]int, t.minHeap.Len())
+    copy(temp, *t.minHeap)
+    sort.Ints(temp)
+    return temp
+}
+
+// Usage
+func main() {
+    tracker := NewTopKLargest(3)
+    nums := []int{5, 3, 8, 1, 9, 2, 7}
+    
+    for _, n := range nums {
+        tracker.Add(n)
+    }
+    
+    // The heap now contains [3, 7, 8] or [7, 8, 3] depending on structure
+    // but the 3 largest are definitely there
+    fmt.Println(tracker.GetTopK()) // [3, 7, 8] or sorted [3, 7, 8]
+}
+```
+
+**Complexity Analysis:**
+- **Space:** O(k) — only stores k elements
+- **Time:** O(n log k) — each of n elements causes at most one push and one pop
+
+Compared to sorting the entire array (O(n log n) time and O(n) space), this is significantly more efficient when k << n.
+
+**Note:** For k smallest, simply invert the comparison in the heap to create a max-heap, or negate the values when using a min-heap.
+
 ## Implementing Binary Heap in Go
 
 Go provides `container/heap` package that provides heap operation. However, we must implement the `heap.Interface` ourselves.
@@ -659,7 +726,7 @@ So, key Rules to Remember are:
 
 ## Case Study
 
-We'll use heap to solve some programming problems from leetcode. We'll use [#1046 - Last Stone Weight](https://leetcode.com/problems/last-stone-weight/) and [#373 - Find K Pairs with Smallest Sums](https://leetcode.com/problems/find-k-pairs-with-smallest-sums/)
+We'll use heap to solve some programming problems from leetcode. We'll use [#1046 - Last Stone Weight](https://leetcode.com/problems/last-stone-weight/), [#373 - Find K Pairs with Smallest Sums](https://leetcode.com/problems/find-k-pairs-with-smallest-sums/), and [#2542 - Maximum Subsequence Score](https://leetcode.com/problems/maximum-subsequence-score/).
 
 ### 1046. Last Stone Weight
 
@@ -1080,6 +1147,113 @@ From these 2 attempts we can learn a lesson about heap:
 > A heap is a "what's next" machine, not a storage container
 
 Our first solution used the heap as a bucket to dump everything into. The correct use is: _store only the frontier of candidates I might need next, and expand lazily._ This reframe that treats heap as navigator, not container will apply broadly.
+
+### 2542. Maximum Subsequence Score
+
+```
+You are given two 0-indexed integer arrays nums1 and nums2 of equal length n and a positive integer k. You must choose a subsequence of indices from nums1 of length k.
+
+For chosen indices i0, i1, ..., ik - 1, your score is defined as:
+
+    The sum of the selected elements from nums1 multiplied with the minimum of the selected elements from nums2.
+    It can defined simply as: (nums1[i0] + nums1[i1] +...+ nums1[ik - 1]) * min(nums2[i0] , nums2[i1], ... ,nums2[ik - 1]).
+
+Return the maximum possible score.
+
+A subsequence of indices of an array is a set that can be derived from the set {0, 1, ..., n-1} by deleting some or no elements.
+
+ 
+
+Example 1:
+
+Input: nums1 = [1,3,3,2], nums2 = [2,1,3,4], k = 3
+Output: 12
+Explanation: 
+The four possible subsequence scores are:
+- We choose the indices 0, 1, and 2 with score = (1+3+3) * min(2,1,3) = 7.
+- We choose the indices 0, 1, and 3 with score = (1+3+2) * min(2,1,4) = 6. 
+- We choose the indices 0, 2, and 3 with score = (1+3+2) * min(2,3,4) = 12. 
+- We choose the indices 1, 2, and 3 with score = (3+3+2) * min(1,3,4) = 8.
+Therefore, we return the max score, which is 12.
+
+Example 2:
+
+Input: nums1 = [4,2,3,1,1], nums2 = [7,5,10,9,6], k = 1
+Output: 30
+Explanation: 
+Choosing index 2 is optimal: nums1[2] * nums2[2] = 3 * 10 = 30 is the maximum possible score.
+
+ 
+
+Constraints:
+
+    n == nums1.length == nums2.length
+    1 <= n <= 10^5
+    0 <= nums1[i], nums2[j] <= 10^5
+    1 <= k <= n
+```
+
+This problem combines the "top k" pattern with a clever sorting strategy. The key insight is that if we sort the pairs by `nums2` in descending order, then as we iterate through the array, the current element's `nums2` value is guaranteed to be the minimum of any subsequence ending at that position.
+
+**The Strategy:**
+1. Pair up `nums1[i]` with `nums2[i]` and sort by `nums2` descending
+2. Use a min-heap to maintain the `k` largest `nums1` values seen so far
+3. When the heap reaches size `k`, calculate the score: `sum * current_nums2` (where `current_nums2` is the minimum of the subsequence due to sorting)
+4. Evict the smallest `nums1` from the heap to make room for potentially better combinations
+
+**Why this works:** By sorting `nums2` descending, we fix the minimum value of our subsequence at each step. The min-heap then ensures we keep the `k` largest `nums1` values that can pair with this minimum, maximizing the sum component of the score.
+
+Here's the implementation:
+
+```go
+func maxScore(nums1 []int, nums2 []int, k int) int64 {
+    n := len(nums1)
+    pairs := make([][2]int, n)
+    for i := range n {
+        pairs[i] = [2]int{nums1[i], nums2[i]}
+    }
+    // Sort by nums2 descending — nums2[i] is the min for any window ending here
+    sort.Slice(pairs, func(i, j int) bool {
+        return pairs[i][1] > pairs[j][1]
+    })
+
+    h := &MinHeap{}
+    heap.Init(h)
+
+    var sum int64
+    var best int64
+
+    for _, p := range pairs {
+        heap.Push(h, p[0])
+        sum += int64(p[0])
+
+        // Once we have exactly k elements, evaluate and evict the smallest
+        if h.Len() == k {
+            best = max(best, sum*int64(p[1]))
+            sum -= int64(heap.Pop(h).(int))
+        }
+    }
+    return best
+}
+
+// Min-heap of ints
+type MinHeap []int
+func (h MinHeap) Len() int           { return len(h) }
+func (h MinHeap) Less(i, j int) bool { return h[i] < h[j] }
+func (h MinHeap) Swap(i, j int)      { h[i], h[j] = h[j], h[i] }
+func (h *MinHeap) Push(x any)        { *h = append(*h, x.(int)) }
+func (h *MinHeap) Pop() any {
+    old := *h; n := len(old)
+    x := old[n-1]; *h = old[:n-1]
+    return x
+}
+```
+
+**Complexity Analysis:**
+- **Time:** O(n log n) for sorting + O(n log k) for heap operations = O(n log n)
+- **Space:** O(n) for the pairs array + O(k) for the heap = O(n)
+
+This elegantly demonstrates how heaps can maintain running "top k" statistics while iterating through sorted data, allowing us to evaluate local optima efficiently without recomputing from scratch.
 
 ## Mathematical Efficiency between Binary Heap and other d-ary Heap
 
