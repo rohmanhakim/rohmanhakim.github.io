@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Tags on Arif&#39;s Homepage</title>
+    <link>https://arifrohman.com/tags/</link>
+    <description>Recent content in Tags on Arif&#39;s Homepage</description>
+    <generator>Hugo</generator>
+    <language>en-us</language>
+    <lastBuildDate>Mon, 10 Aug 2026 00:00:00 +0000</lastBuildDate>
+    <atom:link href="https://arifrohman.com/tags/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Games</title>
+      <link>https://arifrohman.com/tags/games/</link>
+      <pubDate>Mon, 10 Aug 2026 00:00:00 +0000</pubDate>
+      <guid>https://arifrohman.com/tags/games/</guid>
+      <description></description>
+    </item>
+    <item>
+      <title>Linux</title>
+      <link>https://arifrohman.com/tags/linux/</link>
+      <pubDate>Mon, 10 Aug 2026 00:00:00 +0000</pubDate>
+      <guid>https://arifrohman.com/tags/linux/</guid>
+      <description></description>
+    </item>
+    <item>
+      <title>Setup</title>
+      <link>https://arifrohman.com/tags/setup/</link>
+      <pubDate>Fri, 07 Aug 2026 00:00:00 +0000</pubDate>
+      <guid>https://arifrohman.com/tags/setup/</guid>
+      <description></description>
+    </item>
+    <item>
+      <title>Vscode</title>
+      <link>https://arifrohman.com/tags/vscode/</link>
+      <pubDate>Fri, 07 Aug 2026 00:00:00 +0000</pubDate>
+      <guid>https://arifrohman.com/tags/vscode/</guid>
+      <description></description>
+    </item>
+    <item>
+      <title>Bash</title>
+      <link>https://arifrohman.com/tags/bash/</link>
+      <pubDate>Thu, 06 Aug 2026 00:00:00 +0000</pubDate>
+      <guid>https://arifrohman.com/tags/bash/</guid>
+      <description></description>
+    </item>
+    <item>
+      <title>Path</title>
+      <link>https://arifrohman.com/tags/path/</link>
+      <pubDate>Thu, 06 Aug 2026 00:00:00 +0000</pubDate>
+      <guid>https://arifrohman.com/tags/path/</guid>
+      <description></description>
+    </item>
+    <item>
+      <title>Shell</title>
+      <link>https://arifrohman.com/tags/shell/</link>
+      <pubDate>Thu, 06 Aug 2026 00:00:00 +0000</pubDate>
+      <guid>https://arifrohman.com/tags/shell/</guid>
+      <description></description>
+    </item>
+    <item>
+      <title>Terminal</title>
+      <link>https://arifrohman.com/tags/terminal/</link>
+      <pubDate>Thu, 06 Aug 2026 00:00:00 +0000</pubDate>
+      <guid>https://arifrohman.com/tags/terminal/</guid>
+      <description></description>
+    </item>
+    <item>
+      <title>Troubleshooting</title>
+      <link>https://arifrohman.com/tags/troubleshooting/</link>
+      <pubDate>Thu, 06 Aug 2026 00:00:00 +0000</pubDate>
+      <guid>https://arifrohman.com/tags/troubleshooting/</guid>
+      <description></description>
+    </item>
+    <item>
+      <title>Agentic-Coding</title>
+      <link>https://arifrohman.com/tags/agentic-coding/</link>
+      <pubDate>Mon, 03 Aug 2026 00:00:00 +0000</pubDate>
+      <guid>https://arifrohman.com/tags/agentic-coding/</guid>
+      <description></description>
+    </item>
+  </channel>
+</rss>

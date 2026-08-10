@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Vscode on Arif&#39;s Homepage</title>
+    <link>https://arifrohman.com/tags/vscode/</link>
+    <description>Recent content in Vscode on Arif&#39;s Homepage</description>
+    <generator>Hugo</generator>
+    <language>en-us</language>
+    <lastBuildDate>Fri, 07 Aug 2026 00:00:00 +0000</lastBuildDate>
+    <atom:link href="https://arifrohman.com/tags/vscode/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Debugging a VS Code Extension Against Another Project (Without Losing Your Extensions)</title>
+      <link>https://arifrohman.com/post/debugging-a-vs-code-extension-against-another-project-without-losing-your-extensions/</link>
+      <pubDate>Fri, 07 Aug 2026 00:00:00 +0000</pubDate>
+      <guid>https://arifrohman.com/post/debugging-a-vs-code-extension-against-another-project-without-losing-your-extensions/</guid>
+      <description>Learn how to debug a VS Code extension against a real project while keeping only the extensions you want available in the Extension Development Host.</description>
+    </item>
+    <item>
+      <title>Fixing PATH issue in VS Code Terminal</title>
+      <link>https://arifrohman.com/post/fixing-path-issue-in-vscode-terminal/</link>
+      <pubDate>Thu, 06 Aug 2026 00:00:00 +0000</pubDate>
+      <guid>https://arifrohman.com/post/fixing-path-issue-in-vscode-terminal/</guid>
+      <description>Quick fix for when a CLI tool works in your regular terminal but fails with &amp;lsquo;command not found&amp;rsquo; in VS Code&amp;rsquo;s integrated terminal. The issue is bash&amp;rsquo;s early return for non-interactive shells, and the fix is moving PATH exports before that return.</description>
+    </item>
+    <item>
+      <title>Setting Up GitHub MCP Server in Cline</title>
+      <link>https://arifrohman.com/post/setting-up-github-mcp-server-in-cline/</link>
+      <pubDate>Mon, 03 Aug 2026 00:00:00 +0000</pubDate>
+      <guid>https://arifrohman.com/post/setting-up-github-mcp-server-in-cline/</guid>
+      <description>Step-by-step guide to setting up the GitHub MCP server in Cline, giving your AI coding agent direct access to read and analyze GitHub repositories.</description>
+    </item>
+    <item>
+      <title>Running Agentic Coding for Free: My OpenRouter &#43; Cline Setup</title>
+      <link>https://arifrohman.com/post/running-agentic-coding-for-free-my-openrouter-plus-cline-setup/</link>
+      <pubDate>Sat, 03 Jan 2026 00:00:00 +0000</pubDate>
+      <guid>https://arifrohman.com/post/running-agentic-coding-for-free-my-openrouter-plus-cline-setup/</guid>
+      <description>Step-by-step guide to setting up free agentic coding in VS Code using OpenRouter and Cline with the free stepfun/step-3.5-flash model from StepFun. Covers account creation, API key setup, billing configuration, model selection, Plan vs Act workflow, context management, .clinerules, token usage monitoring, and comparisons with models from OpenAI, Google, Anthropic, Moonshot AI, and MiniMax. Ideal for developers who want a zero-cost, practical introduction to autonomous AI coding workflows.</description>
+    </item>
+  </channel>
+</rss>

@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Go&#39;s Delve Suddenly Print `Building .` | Arif&#39;s Homepage</title>
+    <link rel="stylesheet" href="/css/style.css" />
+    <link rel="stylesheet" href="/css/fonts.css" />
+    
+  
+    <meta name="description" content="After upgrading to Go 1.26 and Delve 1.27.0, VS Code&#39;s Go debugger began printing &#39;Building .&#39; before program output. This post explains the cause and why it appears." />
+  
+  <link rel="stylesheet" href="/css/mini-toc.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Source+Sans+3:ital,wght@0,200..900;1,200..900&display=swap" rel="stylesheet">
+  
+
+<link rel="stylesheet" href="/css/custom.css">
+<link rel="stylesheet" href="/css/yahoo.css">
+
+
+<link rel="alternate" type="application/rss+xml" title="Arif&#39;s Homepage - RSS Feed" href="https://arifrohman.com/index.xml" />
+
+<link rel="alternate" type="application/rss+xml" title="Arif&#39;s Homepage - Posts RSS Feed" href="https://arifrohman.com/post/index.xml" />
+
+
+
+
+
+<script data-goatcounter="https://arifrohman.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
+<div class="header-container">
+  <h1><a href="/">Arif's Homepage</a></h1>
+  <ul>
+    <li>
+      <a href="https://www.linkedin.com/in/rohmanhakim/">LinkedIn</a>
+    </li>
+    <li>
+      <a href="https://github.com/rohmanhakim/">GitHub</a>
+    </li>
+    <li>
+      <a href="/about">About</a>
+    </li>
+    <li>
+      <a href="/index.xml" title="RSS Feed">RSS</a>
+    </li>
+  </ul>
+  <button id="btn-switch-theme">Switch to dark Theme</button>
+</div>
+  </head>
+
+  <body>
+
+<div class="article-meta">
+  <h1><span class="title">Go&rsquo;s Delve Suddenly Print <code>Building .</code></span></h1>
+  
+</div>
+
+<main>
+  <article>
+    <p>After upgrading from Go <strong>1.24</strong> to <strong>1.26</strong>, I noticed an extra line appearing every time I debugged a Go program in VS Code:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Building .
+</span></span><span style="display:flex;"><span>Hello World
+</span></span></code></pre></div><p>At first I assumed this came from Go itself, but it turns out it doesn&rsquo;t.</p>
+<p>The culprit is Delve (<code>dlv</code>), the debugger used by the VS Code Go extension. Specifically, I was running Delve 1.27.0.</p>
+<h2 id="what-changed">What changed?</h2>
+<p>Interestingly, Delve didn&rsquo;t just <em>add</em> this message. It had already been emitting a build status internally. In v1.27.0, a <a href="https://github.com/go-delve/delve/pull/4340/changes/fd90a48697af0acc4b8827adf868303c2a6a784b">small change added</a> a trailing newline to the message:</p>
+<p>The patch essentially changed something like:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#a6e22e">fmt</span>.<span style="color:#a6e22e">Fprintf</span>(<span style="color:#f92672">...</span>, <span style="color:#e6db74">&#34;Building %s&#34;</span>, <span style="color:#a6e22e">program</span>)
+</span></span></code></pre></div><p>to</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#a6e22e">fmt</span>.<span style="color:#a6e22e">Fprintf</span>(<span style="color:#f92672">...</span>, <span style="color:#e6db74">&#34;Building %s\n&#34;</span>, <span style="color:#a6e22e">program</span>)
+</span></span></code></pre></div><p>As a result, VS Code&rsquo;s Debug Console now reliably displays:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>Building .
+</span></span><span style="display:flex;"><span>Hello World
+</span></span></code></pre></div><p>instead of just:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>Hello World
+</span></span></code></pre></div><h2 id="can-it-be-disabled">Can it be disabled?</h2>
+<p>As far as I can tell, no.</p>
+<p>I couldn&rsquo;t find any VS Code Go extension setting or Delve option to suppress only this message. The available logging options (<code>showLog</code>, <code>trace</code>, <code>logOutput</code>) don&rsquo;t affect it.</p>
+<h2 id="why-i-care">Why I care</h2>
+<p>I sometimes use Go for studying data structures &amp; algorithms and competitive programming. During debugging, I prefer the console output to contain only my program&rsquo;s output.</p>
+<p>When you&rsquo;re repeatedly running tiny programs like:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#a6e22e">fmt</span>.<span style="color:#a6e22e">Println</span>(<span style="color:#e6db74">&#34;Hello World&#34;</span>)
+</span></span></code></pre></div><p>or printing intermediate values while solving algorithm problems, even a harmless status message adds unnecessary noise.</p>
+<p>It&rsquo;s a tiny change, but one that slightly detracts from the clean feedback loop I enjoy when practicing DSA and CP.</p>
+<p>Maybe one day Delve will expose a setting to hide informational status messages like this. Until then, <code>Building .</code> will be tagging along with every debug session.</p>
+
+  </article>
+  <nav id="mini-toc" aria-label="Table of contents">
+    
+  </nav>
+  <script>
+    (function () {
+      const toc = document.getElementById('mini-toc');
+      if (!toc) return;
+
+      
+      const headings = Array.from(
+        document.querySelectorAll('article h2, article h3')
+      );
+
+      if (headings.length === 0) return;
+
+      
+      headings.forEach((h) => {
+        
+        if (!h.id) {
+          h.id = h.textContent.trim()
+            .toLowerCase()
+            .replace(/[^\w\s-]/g, '')
+            .replace(/\s+/g, '-');
+        }
+
+        const a = document.createElement('a');
+        a.href = '#' + h.id;
+        a.textContent = h.textContent;
+        
+        if (h.tagName === 'H3') a.style.paddingLeft = '1rem';
+        toc.appendChild(a);
+      });
+
+      
+      const links = Array.from(toc.querySelectorAll('a'));
+
+      function onScroll() {
+        let current = headings[0];
+        for (const h of headings) {
+          if (h.getBoundingClientRect().top <= 120) {
+            current = h;
+          }
+        }
+        links.forEach((a) => {
+          a.classList.toggle('active', a.getAttribute('href') === '#' + current.id);
+        });
+      }
+
+      window.addEventListener('scroll', onScroll, { passive: true });
+      onScroll(); 
+    })();
+  </script>
+</main>
+
+<div class="comment">
+  <script src="https://utteranc.es/client.js" repo="rohmanhakim/rohmanhakim.github.io" issue-term="pathname"
+    theme="github-light" crossorigin="anonymous" async>
+    </script>
+</div>
+
+
+  <footer>
+  <script>
+  const btnSwitchTheme = document.getElementById("btn-switch-theme")
+
+  function getTheme() {
+    const cookies = Object.fromEntries(
+      document.cookie.split("; ").map(c => c.split("="))
+    );
+    return cookies.theme || "light";
+  }
+
+  function invertTheme(theme) {
+    return theme == "light" ? "dark" : "light"
+  }
+
+  function applyTheme(toTheme) {
+    btnSwitchTheme.textContent = "Switch to " + invertTheme(toTheme) + " theme"
+    document.querySelector("html").style = toTheme == "dark" ? "filter: invert(1);" : ""
+    neuralizeChildrenColor("img", toTheme)
+    neuralizeChildrenColor("button", toTheme)
+    neuralizeChildrenColor(".resume-download-button", toTheme)
+    neuralizeChildrenColor(".highlight", toTheme)
+  }
+
+  function neuralizeChildrenColor(child, toTheme) {
+    document.querySelectorAll(child).forEach(el => {
+      el.style = toTheme == "dark" ? "filter: invert(1);" : ""
+    })
+  }
+
+  btnSwitchTheme.addEventListener("click", (event) => {
+    const theme = getTheme()
+    const newTheme = invertTheme(theme)
+    document.cookie = "theme=" + newTheme + ";path=/"
+    applyTheme(newTheme)
+  })
+
+  applyTheme(getTheme())
+</script>
+<div class="footer-container">
+  <p>Copyright © 2026 <a href="/">Muhammad Arif Rohman Hakim</a></p>
+  <ul>
+    <li>
+      <a href="https://www.linkedin.com/in/rohmanhakim/">LinkedIn</a>
+    </li>
+    <li>
+      <a href="https://github.com/rohmanhakim/">GitHub</a>
+    </li>
+    <li>
+      <a href="/about">About</a>
+    </li>
+    <li>
+      <a href="/index.xml" title="RSS Feed">RSS</a>
+    </li>
+  </ul>
+</div>
+  
+  </footer>
+  </body>
+</html>

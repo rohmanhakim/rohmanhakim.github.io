@@ -1,0 +1,1402 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Implementing Any-In Prioritized-Out Data Type using Heap in Go | Arif&#39;s Homepage</title>
+    <link rel="stylesheet" href="/css/style.css" />
+    <link rel="stylesheet" href="/css/fonts.css" />
+    
+  
+    <meta name="description" content="Explore how to design an any-in prioritized-out data structure using priority queue and heap in go." />
+  
+  <link rel="stylesheet" href="/css/mini-toc.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Source+Sans+3:ital,wght@0,200..900;1,200..900&display=swap" rel="stylesheet">
+  
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js"></script>
+
+<script>
+  MathJax = {
+    tex: {
+      displayMath: [['\\[', '\\]'], ['$$', '$$']],  
+      inlineMath: [['\\(', '\\)']]                  
+    },
+    loader:{
+      load: ['ui/safe']
+    },
+  };
+</script>
+  
+
+<link rel="stylesheet" href="/css/custom.css">
+<link rel="stylesheet" href="/css/yahoo.css">
+
+
+<link rel="alternate" type="application/rss+xml" title="Arif&#39;s Homepage - RSS Feed" href="https://arifrohman.com/index.xml" />
+
+<link rel="alternate" type="application/rss+xml" title="Arif&#39;s Homepage - Posts RSS Feed" href="https://arifrohman.com/post/index.xml" />
+
+
+
+
+
+<script data-goatcounter="https://arifrohman.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
+<div class="header-container">
+  <h1><a href="/">Arif's Homepage</a></h1>
+  <ul>
+    <li>
+      <a href="https://www.linkedin.com/in/rohmanhakim/">LinkedIn</a>
+    </li>
+    <li>
+      <a href="https://github.com/rohmanhakim/">GitHub</a>
+    </li>
+    <li>
+      <a href="/about">About</a>
+    </li>
+    <li>
+      <a href="/index.xml" title="RSS Feed">RSS</a>
+    </li>
+  </ul>
+  <button id="btn-switch-theme">Switch to dark Theme</button>
+</div>
+  </head>
+
+  <body>
+
+<div class="article-meta">
+  <h1><span class="title">Implementing Any-In Prioritized-Out Data Type using Heap in Go</span></h1>
+  
+</div>
+
+<main>
+  <article>
+    <p>There are many programming problems that require the data to be stored in a list but the order of processing items have to follow certain kind of rule.</p>
+<p>If we need to process the first-arriving data first, we use Queue, a list that implements First-In, First-Out (FIFO).</p>
+<p>If we need to process the last-arriving data instead, we use Stack, a list that implement Last-In, First-Out (LIFO).</p>
+<p>
+  <img src="images/01-queue-stack.svg" alt="Queue and Stack comparison illustration">
+
+</p>
+<p>Notice that both data type apply rules that is based on the <strong>order of arrival</strong> (first-arriving &amp; last-arriving) of the items. But, what if we need to process that item based on <strong>their values</strong>? We use a data type called <strong>priority queue</strong>.</p>
+<p>In priority queue. the order of the arrival doesn&rsquo;t matter, what matters is the value the items&rsquo; hold. Imagine it&rsquo;s like an Emergency Room in a Hospital where the arrived patients need to be triaged, and the first patient to be served is the one who have the highest priority (e.g. based on the severity of their symptoms).</p>
+<p>
+  <img src="images/02-priority-queue.svg" alt="Prority Queue illustration">
+
+</p>
+<p>The illustration above showed how the arrival of the item does not affect the order of processing, as the priority queue will maintain a priority order inside, in this context: the item with the highest value has the highest priority. The arriving item will have designated place for it based on its value.</p>
+<h2 id="slice-implementation">Slice Implementation</h2>
+<p>Priority Queue is an abstract data type (ADT), in order to use it we have to implement it with concrete data structure. Such data structure that we can use is an array (slice in Go).</p>
+<p>How do we implement it using slice? We can try to use modification of regular queue, as in Go we commonly use slice to implement queue:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span>    <span style="color:#a6e22e">queue</span> <span style="color:#f92672">:=</span> []<span style="color:#66d9ef">int</span>{}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">queue</span> = append(<span style="color:#a6e22e">queue</span>, <span style="color:#ae81ff">5</span>) <span style="color:#75715e">// push</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">queue</span> = append(<span style="color:#a6e22e">queue</span>, <span style="color:#ae81ff">7</span>)
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">queue</span> = append(<span style="color:#a6e22e">queue</span>, <span style="color:#ae81ff">3</span>)
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">queue</span> = append(<span style="color:#a6e22e">queue</span>, <span style="color:#ae81ff">6</span>)
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">queue</span> = append(<span style="color:#a6e22e">queue</span>, <span style="color:#ae81ff">8</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// at this point the queue slice will have: [5,7,3,6,8]</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">front</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">queue</span>[<span style="color:#ae81ff">0</span>]  <span style="color:#75715e">// peeking... -&gt; return 5</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">queue</span> = <span style="color:#a6e22e">queue</span>[<span style="color:#ae81ff">1</span>:] <span style="color:#75715e">// and popping -&gt; slice becomes: [7,3,6,8]</span>
+</span></span></code></pre></div><p>Because the priority queue have to maintain an order in the queue, we have to sort every time a new item is being pushed</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#66d9ef">func</span> <span style="color:#a6e22e">Push</span>(<span style="color:#a6e22e">queue</span> []<span style="color:#66d9ef">int</span>, <span style="color:#a6e22e">item</span> <span style="color:#66d9ef">int</span>) []<span style="color:#66d9ef">int</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">queue</span> = append(<span style="color:#a6e22e">queue</span>, <span style="color:#a6e22e">item</span>)
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">sort</span>.<span style="color:#a6e22e">Slice</span>(<span style="color:#a6e22e">queue</span>, <span style="color:#66d9ef">func</span>(<span style="color:#a6e22e">i</span>, <span style="color:#a6e22e">j</span> <span style="color:#66d9ef">int</span>) <span style="color:#66d9ef">bool</span> {
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">queue</span>[<span style="color:#a6e22e">i</span>] &gt; <span style="color:#a6e22e">queue</span>[<span style="color:#a6e22e">j</span>] <span style="color:#75715e">// sort descending (by the highest item)</span>
+</span></span><span style="display:flex;"><span>    })
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">queue</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">func</span> <span style="color:#a6e22e">Pop</span>(<span style="color:#a6e22e">queue</span> []<span style="color:#66d9ef">int</span>) (<span style="color:#66d9ef">int</span>, []<span style="color:#66d9ef">int</span>) {
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">front</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">queue</span>[<span style="color:#ae81ff">0</span>]
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">queue</span> = <span style="color:#a6e22e">queue</span>[<span style="color:#ae81ff">1</span>:]
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">front</span>, <span style="color:#a6e22e">queue</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">func</span> <span style="color:#a6e22e">PriorityQueue</span>() {
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">queue</span> <span style="color:#f92672">:=</span> []<span style="color:#66d9ef">int</span>{}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">queue</span> = <span style="color:#a6e22e">Push</span>(<span style="color:#a6e22e">queue</span>, <span style="color:#ae81ff">5</span>) <span style="color:#75715e">// slice becomes: [5]</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">queue</span> = <span style="color:#a6e22e">Push</span>(<span style="color:#a6e22e">queue</span>, <span style="color:#ae81ff">7</span>) <span style="color:#75715e">// ...            [7, 5]</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">queue</span> = <span style="color:#a6e22e">Push</span>(<span style="color:#a6e22e">queue</span>, <span style="color:#ae81ff">3</span>) <span style="color:#75715e">// ...            [7, 5, 3]</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">queue</span> = <span style="color:#a6e22e">Push</span>(<span style="color:#a6e22e">queue</span>, <span style="color:#ae81ff">6</span>) <span style="color:#75715e">// ...            [7, 6, 5, 3]</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">queue</span> = <span style="color:#a6e22e">Push</span>(<span style="color:#a6e22e">queue</span>, <span style="color:#ae81ff">8</span>) <span style="color:#75715e">// ...            [8, 7, 6, 5, 3]</span>
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">front</span>, <span style="color:#a6e22e">queue</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">Pop</span>(<span style="color:#a6e22e">queue</span>) <span style="color:#75715e">// slice becomes: [7, 6, 5, 3]</span>
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">fmt</span>.<span style="color:#a6e22e">Println</span>(<span style="color:#a6e22e">front</span>) <span style="color:#75715e">// -&gt; will print: 8</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>Complexities:</p>
+<table>
+  <thead>
+      <tr>
+          <th>Operation</th>
+          <th>Cost</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>Push</td>
+          <td>O(n log n)</td>
+      </tr>
+      <tr>
+          <td>Pop</td>
+          <td>O(1)</td>
+      </tr>
+      <tr>
+          <td>Peek</td>
+          <td>O(1)</td>
+      </tr>
+  </tbody>
+</table>
+<p>We have O(n log n) cost when pushing because every insertion/push involves the entire slice.</p>
+<p>This was fine for small data, but we need to use better approach if we want to process millions of items if we don&rsquo;t want to get:</p>
+<pre tabindex="0"><code>O(20000000 log 20000000)
+</code></pre><h3 id="using-binary-search-instead-of-sorting">Using binary search instead of sorting</h3>
+<p>Better implementation if we keep using slice is to <strong>assume that the queue is already sorted</strong> during <code>Push()</code>. Then we can exploit this property using <strong>Binary Search</strong>.</p>
+<p>Here&rsquo;s the breakdown of the <code>Push()</code> algorithm :</p>
+<ol>
+<li>Assume <code>queue</code> is already sorted</li>
+<li>Use <code>sort.Search</code> (Go&rsquo;s implementation of binary search) to find where the new item belongs</li>
+<li>Shift the elements to make room</li>
+<li>Insert the item</li>
+</ol>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#66d9ef">func</span> <span style="color:#a6e22e">Push</span>(<span style="color:#a6e22e">queue</span> []<span style="color:#66d9ef">int</span>, <span style="color:#a6e22e">item</span> <span style="color:#66d9ef">int</span>) []<span style="color:#66d9ef">int</span> { <span style="color:#75715e">// assume queue is already sorted</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">idx</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">sort</span>.<span style="color:#a6e22e">Search</span>(len(<span style="color:#a6e22e">queue</span>), <span style="color:#66d9ef">func</span>(<span style="color:#a6e22e">i</span> <span style="color:#66d9ef">int</span>) <span style="color:#66d9ef">bool</span> { <span style="color:#75715e">// perform binary search</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#75715e">// find the first index where the value is lower than or equals to the item</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">queue</span>[<span style="color:#a6e22e">i</span>] <span style="color:#f92672">&lt;=</span> <span style="color:#a6e22e">item</span> 
+</span></span><span style="display:flex;"><span>    })
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">queue</span> = append(<span style="color:#a6e22e">queue</span>, <span style="color:#ae81ff">0</span>) <span style="color:#75715e">// make one slot to the end of queue</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#75715e">// shift the queue one slot to the right from the found index</span>
+</span></span><span style="display:flex;"><span>    copy(<span style="color:#a6e22e">queue</span>[<span style="color:#a6e22e">idx</span><span style="color:#f92672">+</span><span style="color:#ae81ff">1</span>:], <span style="color:#a6e22e">queue</span>[<span style="color:#a6e22e">idx</span>:]) 
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">queue</span>[<span style="color:#a6e22e">idx</span>] = <span style="color:#a6e22e">item</span> <span style="color:#75715e">// fill the availabe slot with the new item</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">queue</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>This preserves exactly the same behavior as the previous code, but each insertion is O(n) instead of O(n log n) because it&rsquo;s no longer re-sorting the entire slice after every push.</p>
+<table>
+  <thead>
+      <tr>
+          <th>Operation</th>
+          <th>Cost</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>Find position</td>
+          <td>O(log n)</td>
+      </tr>
+      <tr>
+          <td>Shift elements</td>
+          <td>O(n)</td>
+      </tr>
+      <tr>
+          <td>Push</td>
+          <td>O(n)</td>
+      </tr>
+      <tr>
+          <td>Pop front</td>
+          <td>O(1)</td>
+      </tr>
+      <tr>
+          <td>Peek</td>
+          <td>O(1)</td>
+      </tr>
+  </tbody>
+</table>
+<h2 id="heap">Heap</h2>
+<p>A heap is a complete-tree data structure that maintains a rule called <strong>heap-order property</strong> that is:</p>
+<blockquote>
+<p>parent &lt;= children</p>
+</blockquote>
+<p>For min-heap, and:</p>
+<blockquote>
+<p>parent &gt;= children</p>
+</blockquote>
+<p>For max-heap.</p>
+<p>To illustrate this, let&rsquo;s examine the following figure:</p>
+<p>
+  <img src="images/03-min-max-heap.svg" alt="Min and Max Heap illustration">
+
+</p>
+<p>In min-heap, every parent is less than or equal to its children, and in max-heap every parent is more than or equal to its children. But notice that they are not sorted. For example, in min-heap, the 7 appears before 3.</p>
+<h3 id="why-is-this-useful">Why is this useful?</h3>
+<p>The heap property guarantees that the root contains the &ldquo;best&rdquo; item:</p>
+<ul>
+<li>In min-heap: the smallest item is at the root</li>
+<li>In max-heap: the largest item is at the root</li>
+</ul>
+<p>To get the highest-priority/best item efficiently we don&rsquo;t have to fully sort everything.</p>
+<p>The number of children of a parent determines what to call the heap. A heap in which all parents have 2 children at most is called <strong>Binary Heap</strong>. If at most 3 children, it&rsquo;s called Ternary Heap, an so on.</p>
+<h3 id="how-a-heap-operates-as-a-priority-queue">How a heap operates as a priority queue</h3>
+<p>Let&rsquo;s use small dataset: 5, 7, 3, 6, 8 and use Min-Heap. We want smallest number to be prioritized first. In this example we&rsquo;ll use binary heap, so a parent will have 2 children at most.</p>
+<p><strong>Step 1</strong></p>
+<pre tabindex="0"><code>5
+</code></pre><p>Begin with the root as the heap is empty. The root always highest-priority item.</p>
+<p><strong>Step 2: Insert 7</strong></p>
+<pre tabindex="0"><code>   5
+  /
+ 7  
+</code></pre><p>If there&rsquo;s exist item in the heap, pushing an item will put it to available parent as a child.</p>
+<p>We then check min-heap property: <code>5 &lt;= 7 ?</code>.  &ndash;&gt; True. no changes.</p>
+<p><strong>Step 3: Insert 3</strong></p>
+<pre tabindex="0"><code>   5
+  / \
+ 7   3
+</code></pre><p>Item <code>5</code> still have child slot. so we insert <code>3</code> there.</p>
+<p>Check the min-heap property again: <code>5 &lt;= 3 ?</code> &ndash;&gt; False. Oops, we can&rsquo;t put it there, so we &ldquo;bubble&rdquo; up, swapping  <code>3</code> with its parent&rsquo;s place:</p>
+<pre tabindex="0"><code>   3
+  / \
+ 7   5  
+</code></pre><p>Notice, we didn&rsquo;t do any sorting. we just compare the new item to its parent and fixed the path to satisfy heap&rsquo;s property.</p>
+<p><strong>Step 4: Insert 6</strong></p>
+<pre tabindex="0"><code>     3
+    / \
+   7   5
+  /
+ 6    
+</code></pre><p>Because it&rsquo;s a binary heap, we have to keep any parent to have 2 children at most. So, the the new item must find another parent than the root, we moving down one level, and found 7 still have slot. We put 6 here. Check the heap property again: <code>7 &lt;= 6 ?</code> &ndash;&gt; False. Nope, we have to swap <code>7</code> and <code>6</code> :</p>
+<pre tabindex="0"><code>     3
+    / \
+   6   5
+  /
+ 7    
+</code></pre><p><strong>Umm, wait, why don&rsquo;t we put 6 as the children of 5?</strong>
+Since <code>5 &lt;= 6 ?</code> &ndash;&gt; True we might question this. But we have to remember that a heap is a <strong>complete tree</strong>. Meaning that every level <strong>must be filled left-to-right</strong>.</p>
+<p>But why must it be a complete-tree? We&rsquo;ll find out in the next section. Let&rsquo;s complete the heap first.</p>
+<p><strong>Step 5: Insert 8</strong></p>
+<pre tabindex="0"><code>     3
+    / \
+   6   5
+  / \
+ 7   8    
+</code></pre><p>Everything already satisfies the heap property.</p>
+<p><strong>Now let&rsquo;s pop item from the heap</strong>
+We want: <code>pop() -&gt; 3</code></p>
+<p><strong>Remove Root</strong></p>
+<pre tabindex="0"><code>     3
+    / \
+   6   5
+  / \
+ 7   8    
+</code></pre><p>Save <code>3</code>, then move last element (<code>8</code>) to root</p>
+<pre tabindex="0"><code>     8
+    / \
+   6   5
+  /
+ 7    
+</code></pre><p>Now the heap property is broken because <code>8 &lt;= 6 ?</code> and <code>8 &lt;= 5 ?</code> &ndash;&gt; False. We need to &ldquo;bubble&rdquo; down. Swapping 8 with it&rsquo;s child.</p>
+<ul>
+<li>Child: <code>6</code> and <code>3</code></li>
+<li>Take the smallest child : <code>5 </code>(Because this is min-heap, for max-heap, take the largest)</li>
+</ul>
+<pre tabindex="0"><code>    5
+   / \ 
+  6   8
+ /
+7    
+</code></pre><p>Check the heap property again: <code>8</code> has no children. No changes needed.
+Now we just return the saved item <code>3</code>.</p>
+<p><strong>Let&rsquo;s pop again</strong>
+We want: <code>pop() -&gt; 5</code></p>
+<p>Remove Root (<code>5</code>) and move last element (<code>7</code>) there</p>
+<pre tabindex="0"><code>     7
+    / \
+   6   8  
+</code></pre><p>Check heap-property:</p>
+<ul>
+<li><code>7 &lt;= 6 ?</code> &ndash;&gt; False</li>
+<li><code>7 &lt;= 8 ?</code> &ndash;&gt; True</li>
+</ul>
+<p>Swap <code>7</code> and <code>6</code>:</p>
+<pre tabindex="0"><code>     6
+    / \
+   7   8  
+</code></pre><p>Done. Return saved item: <code>5</code></p>
+<p>Popping all the items in order will give:</p>
+<pre tabindex="0"><code>3
+5
+6
+7
+8
+</code></pre><p>Exactly what a priority queue should do.</p>
+<h3 id="why-heap-is-faster-than-the-sorted-queue--search">Why heap is faster than the sorted queue + search</h3>
+<p>Notice what happened during insert of <code>3</code>, during the &ldquo;bubble up&rdquo; of <code>5</code> :</p>
+<pre tabindex="0"><code>5
+ \
+  3
+</code></pre><p>We only compared along one path: <code>3 -&gt; 5</code>. Not the entire heap.</p>
+<p>Also during first popping (<code>3</code>) , during the &ldquo;bubble&rdquo; down of <code>8</code> : <code>8 -&gt; 5</code>. Also one path, not the entire heap.</p>
+<p>For a heap with <code>n</code> elements, that path length is about:</p>
+\[log_{2} n\]<ul>
+<li>Push: O(log n)</li>
+<li>Pop: O(log n)</li>
+<li>Peek: O(1)</li>
+</ul>
+<p>That&rsquo;s the core idea of a heap: it maintains <em>just enough order</em> to always know the next prioritized item, without paying the cost of keeping everything to be fully sorted.</p>
+<h3 id="why-must-a-heap-be-a-complete-tree">Why must a heap be a complete-tree</h3>
+<p>No let&rsquo;s back out pending question: why must a heap be a complete-tree?</p>
+<p>We initially might think a heap to be a logical tree, where we can put item under any of available children.</p>
+<pre tabindex="0"><code>   3
+  / \
+ 7   5 
+</code></pre><p>Why can&rsquo;t we just put <code>6</code> under <code>5</code> instead of the hassle of bubbling down <code>7</code> for <code>6</code>?</p>
+<pre tabindex="0"><code>   3
+  / \
+ 7   5
+    /
+   6   
+</code></pre><p>Doesn&rsquo;t this satisfy the heap property?</p>
+<ul>
+<li><code>3 &lt;= 7</code></li>
+<li><code>3 &lt;= 5</code></li>
+<li><code>5 &lt;= 6</code></li>
+</ul>
+<p>As mentioned before, a heap must be a complete-tree. Every level must be filled from left to the right. But why so?</p>
+<p><strong>Because a complete-tree can be represented as an array</strong></p>
+<p>
+  <img src="images/04-binary-heap-as-array.svg" alt="Illustration of a binary heap represeneted as an array">
+
+</p>
+<p>Let&rsquo;s take the heap:</p>
+<pre tabindex="0"><code>   3
+  / \
+ 7   5  
+</code></pre><p>We can just represent this to an array:</p>
+<pre tabindex="0"><code>[3, 7, 5]
+</code></pre><p>When a new item arrive, let&rsquo;s say <code>6</code>, it must occupy the 3rd index. There is no choice:</p>
+<pre tabindex="0"><code>[3, 7, 5, 6]
+</code></pre><p>Which corresponds to the heap after insertion:</p>
+<pre tabindex="0"><code>     3
+    / \
+   7   5
+  /
+ 6    
+</code></pre><p>As now the heap property is violated because <code>7 &lt;= 6</code> &ndash;&gt; False., we swap <code>6</code> with its parent (<code>7</code>):</p>
+<pre tabindex="0"><code>     3
+    / \
+   6   5
+  /
+ 7    
+</code></pre><p>This operation is called bubble up or sift up.</p>
+<p>Now the array representation becomes: <code>3, 6, 5, 7</code></p>
+<p><strong>Why it matters that the heap can be represented by array?</strong></p>
+<p>Because we don&rsquo;t need to use pointers to link between parent and its children as if it&rsquo;s a logical tree. We can just use this <strong>index formula</strong>:</p>
+\[parent=(i-1)/2\]<p>
+</p>
+\[left=2*1+1\]<p>
+</p>
+\[right=2*1+2\]<p>If we use arbitrary placements like:</p>
+<pre tabindex="0"><code>     3
+    / \
+   7   5
+      /
+     6   
+</code></pre><p>we&rsquo;ll lose the complete-tree structure, and the simple array representation would no longer work.</p>
+<p>Had we implement heap with pointers, for example using doubly linked-list, we&rsquo;ll have :</p>
+<table>
+  <thead>
+      <tr>
+          <th></th>
+          <th>Array</th>
+          <th>Doubly Linked List</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>Find parent/child</td>
+          <td>O(1) via index formula</td>
+          <td>O(n) - must traverse</td>
+      </tr>
+      <tr>
+          <td>Memory</td>
+          <td>Contiguous, cache-friendly</td>
+          <td>Extra memory for pointers</td>
+      </tr>
+      <tr>
+          <td>Random Access</td>
+          <td>O(1)</td>
+          <td>O(n)</td>
+      </tr>
+      <tr>
+          <td>Insert at end</td>
+          <td>O(1) amortized</td>
+          <td>O(1)</td>
+      </tr>
+      <tr>
+          <td>Cache performance</td>
+          <td>Excellent</td>
+          <td>Poor (Scattered in memory)</td>
+      </tr>
+  </tbody>
+</table>
+<p>The biggest win of using array is the <strong>cache locality</strong>.  Array elements sit next to each other in memory, so the CPU can prefetch them efficiently. A linked list&rsquo;s nodes are scattered across the memory, causing frequent cache misses.</p>
+<p><strong>When would w use a linked -list for trees?</strong>
+Linked lists make sense for trees that are not complete like BSTs, AVL trees, or red-black trees where the shape is unpredictable and we can&rsquo;t use index math. For those, we genuinely need <code>left</code>/<code>right</code> pointers of doubly linked-list.</p>
+<p>But a heap&rsquo;s rigid shape guarantee makes the array trick possible and optimal.</p>
+<h3 id="binary-and-d-ary-heaps">Binary and d-ary heaps</h3>
+<p>You may notice that we strictly use binary tree (tree which parent has 2 children at most) for heap. Can we add more children per parent?</p>
+<p><strong>Yes</strong>. This is called <strong>d-ary heaps</strong>. A heap which parent has 3 children at most is called 3-ary heap or ternary heap.</p>
+<pre tabindex="0"><code>       1
+      /|\
+     7 3 9
+    / \
+   8  10    
+</code></pre><p>The heap property still holds:</p>
+<pre tabindex="0"><code>1 &lt;= 7
+1 &lt;= 3
+1 &lt;= 9
+
+7 &lt;= 8
+7 &lt;= 10
+</code></pre><p>It&rsquo;s perfectly valid heap.</p>
+<p>However, in most programming problems, we&rsquo;ll found out that most people settles on using binary heaps as the default. So much that when someone said that he uses a heap, it <strong>almost certainly that he means binary heap</strong>. Why so?</p>
+<blockquote>
+<p>The number of maximum children per parent affect the tradeoff between <strong>tree height</strong> and <strong>work per level</strong>.</p>
+</blockquote>
+<p><strong>Let&rsquo;s look at binary heap</strong>
+Suppose we have 1,000,000 elements. We can approximate the height by calculating log base 2 to 1,000,000 since binary heap has 2 children at most. Therefore:</p>
+<pre tabindex="0"><code>log₂(1,000,000) ≈ 20
+</code></pre><p>Since height of the heap matters when we do bubble up and bubble down, thus:</p>
+<ul>
+<li>When pushing: bubble up at most 20 levels</li>
+<li>When popping: bubble down at most 20 levels</li>
+</ul>
+<p>At each level, we compare an item (both pushing/popping) with at most 2 children, total work can be calculated as (roughly speaking):</p>
+<pre tabindex="0"><code>20 x 2 = 40 compariosns
+</code></pre><p><strong>Let&rsquo;s compare with ternary heap (3 children)</strong>
+Height becomes:</p>
+<pre tabindex="0"><code>log₃(1,000,000) ≈ 13
+</code></pre><p>Nice! fewer levels. But now during bubble down we must <strong>find the smallest among 3 children</strong> instead of 2 in binary heap.</p>
+<p>Total work become:</p>
+<pre tabindex="0"><code>13 × 3 = 39 comparisons
+</code></pre><p>Very similar.</p>
+<p><strong>8-ary heap</strong>
+Height now become <code>log₈(1,000,000) ≈ 7</code> which is much shorter. But then each level requires checking 8 children. Calculate work:</p>
+<pre tabindex="0"><code>7 × 8 = 56 comparisons
+</code></pre><p>Now we&rsquo;re losing.</p>
+<p>If we continue examining the <code>d</code> (which we would do later at the end of this post) we&rsquo;ll find out that binary heap actually isn&rsquo;t the most efficient heap, workload-wise. But also, that the difference of work efficiency between any d-ary heap is small enough that simplicity, cache behavior, constant factors often matter more than mathematical optimum.</p>
+<p>For binary heap specifically, many people choose it because it&rsquo;s :</p>
+<ul>
+<li>Easier to teach (simplest implementation)</li>
+<li>Easier to prove correct</li>
+<li>Already efficient that adding more <code>d</code> seems unnecessary</li>
+<li>Quite good cache behavior (even though not the best)</li>
+</ul>
+<p>We&rsquo;ll compare binary heap with other d-ary heaps at the end of the post</p>
+<h2 id="finding-top-k-elements">Finding Top K Elements</h2>
+<p>Another practical use of priority queues is maintaining the &ldquo;top k&rdquo; smallest or largest elements from a dataset—useful for tracking running statistics, finding outliers, or summarizing large datasets without full sorting.</p>
+<p><strong>The Pattern:</strong></p>
+<ul>
+<li>To find <strong>k largest</strong> elements: Use a <strong>min-heap</strong> of size k</li>
+<li>To find <strong>k smallest</strong> elements: Use a <strong>max-heap</strong> of size k</li>
+</ul>
+<p><strong>Why this works:</strong> The heap root always holds the &ldquo;worst&rdquo; candidate among your top k. If you find something better, you evict the worst and insert the new candidate.</p>
+<p><strong>Example: Finding K Largest Numbers</strong></p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#75715e">// TopKLargest maintains a min-heap to track k largest numbers</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">type</span> <span style="color:#a6e22e">TopKLargest</span> <span style="color:#66d9ef">struct</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">k</span> <span style="color:#66d9ef">int</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">minHeap</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">MinHeap</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">func</span> <span style="color:#a6e22e">NewTopKLargest</span>(<span style="color:#a6e22e">k</span> <span style="color:#66d9ef">int</span>) <span style="color:#f92672">*</span><span style="color:#a6e22e">TopKLargest</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">h</span> <span style="color:#f92672">:=</span> <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">MinHeap</span>{}
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">heap</span>.<span style="color:#a6e22e">Init</span>(<span style="color:#a6e22e">h</span>)
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">TopKLargest</span>{<span style="color:#a6e22e">k</span>: <span style="color:#a6e22e">k</span>, <span style="color:#a6e22e">minHeap</span>: <span style="color:#a6e22e">h</span>}
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">func</span> (<span style="color:#a6e22e">t</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">TopKLargest</span>) <span style="color:#a6e22e">Add</span>(<span style="color:#a6e22e">num</span> <span style="color:#66d9ef">int</span>) {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> <span style="color:#a6e22e">t</span>.<span style="color:#a6e22e">minHeap</span>.<span style="color:#a6e22e">Len</span>() &lt; <span style="color:#a6e22e">t</span>.<span style="color:#a6e22e">k</span> {
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">heap</span>.<span style="color:#a6e22e">Push</span>(<span style="color:#a6e22e">t</span>.<span style="color:#a6e22e">minHeap</span>, <span style="color:#a6e22e">num</span>)
+</span></span><span style="display:flex;"><span>    } <span style="color:#66d9ef">else</span> <span style="color:#66d9ef">if</span> <span style="color:#a6e22e">num</span> &gt; (<span style="color:#f92672">*</span><span style="color:#a6e22e">t</span>.<span style="color:#a6e22e">minHeap</span>)[<span style="color:#ae81ff">0</span>] {
+</span></span><span style="display:flex;"><span>        <span style="color:#75715e">// New number is larger than the k-th largest so far</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">heap</span>.<span style="color:#a6e22e">Pop</span>(<span style="color:#a6e22e">t</span>.<span style="color:#a6e22e">minHeap</span>)
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">heap</span>.<span style="color:#a6e22e">Push</span>(<span style="color:#a6e22e">t</span>.<span style="color:#a6e22e">minHeap</span>, <span style="color:#a6e22e">num</span>)
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">func</span> (<span style="color:#a6e22e">t</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">TopKLargest</span>) <span style="color:#a6e22e">GetTopK</span>() []<span style="color:#66d9ef">int</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">result</span> <span style="color:#f92672">:=</span> make([]<span style="color:#66d9ef">int</span>, <span style="color:#a6e22e">t</span>.<span style="color:#a6e22e">minHeap</span>.<span style="color:#a6e22e">Len</span>())
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// Copy and sort the result (optional)</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">temp</span> <span style="color:#f92672">:=</span> make([]<span style="color:#66d9ef">int</span>, <span style="color:#a6e22e">t</span>.<span style="color:#a6e22e">minHeap</span>.<span style="color:#a6e22e">Len</span>())
+</span></span><span style="display:flex;"><span>    copy(<span style="color:#a6e22e">temp</span>, <span style="color:#f92672">*</span><span style="color:#a6e22e">t</span>.<span style="color:#a6e22e">minHeap</span>)
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">sort</span>.<span style="color:#a6e22e">Ints</span>(<span style="color:#a6e22e">temp</span>)
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">temp</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">// Usage</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">func</span> <span style="color:#a6e22e">main</span>() {
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">tracker</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">NewTopKLargest</span>(<span style="color:#ae81ff">3</span>)
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">nums</span> <span style="color:#f92672">:=</span> []<span style="color:#66d9ef">int</span>{<span style="color:#ae81ff">5</span>, <span style="color:#ae81ff">3</span>, <span style="color:#ae81ff">8</span>, <span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">9</span>, <span style="color:#ae81ff">2</span>, <span style="color:#ae81ff">7</span>}
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">for</span> <span style="color:#a6e22e">_</span>, <span style="color:#a6e22e">n</span> <span style="color:#f92672">:=</span> <span style="color:#66d9ef">range</span> <span style="color:#a6e22e">nums</span> {
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">tracker</span>.<span style="color:#a6e22e">Add</span>(<span style="color:#a6e22e">n</span>)
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// The heap now contains [3, 7, 8] or [7, 8, 3] depending on structure</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// but the 3 largest are definitely there</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">fmt</span>.<span style="color:#a6e22e">Println</span>(<span style="color:#a6e22e">tracker</span>.<span style="color:#a6e22e">GetTopK</span>()) <span style="color:#75715e">// [3, 7, 8] or sorted [3, 7, 8]</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><strong>Complexity Analysis:</strong></p>
+<ul>
+<li><strong>Space:</strong> O(k) — only stores k elements</li>
+<li><strong>Time:</strong> O(n log k) — each of n elements causes at most one push and one pop</li>
+</ul>
+<p>Compared to sorting the entire array (O(n log n) time and O(n) space), this is significantly more efficient when k &laquo; n.</p>
+<p><strong>Note:</strong> For k smallest, simply invert the comparison in the heap to create a max-heap, or negate the values when using a min-heap.</p>
+<h2 id="implementing-binary-heap-in-go">Implementing Binary Heap in Go</h2>
+<p>Go provides <code>container/heap</code> package that provides heap operation. However, we must implement the <code>heap.Interface</code> ourselves.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#66d9ef">type</span> <span style="color:#a6e22e">Interface</span> <span style="color:#66d9ef">interface</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">sort</span>.<span style="color:#a6e22e">Interface</span>        <span style="color:#75715e">// Len(), Less(), Swap()</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">Push</span>(<span style="color:#a6e22e">x</span> <span style="color:#66d9ef">interface</span>{})
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">Pop</span>() <span style="color:#66d9ef">interface</span>{}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="basic-integer-min-heap-in-go">Basic Integer Min-Heap in Go</h3>
+<p>We need to implement the interface first:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#f92672">package</span> <span style="color:#a6e22e">main</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">import</span> (
+</span></span><span style="display:flex;"><span>    <span style="color:#e6db74">&#34;container/heap&#34;</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#e6db74">&#34;fmt&#34;</span>
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">// Define the heap type</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">type</span> <span style="color:#a6e22e">MinHeap</span> []<span style="color:#66d9ef">int</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">func</span> (<span style="color:#a6e22e">h</span> <span style="color:#a6e22e">MinHeap</span>) <span style="color:#a6e22e">Len</span>() <span style="color:#66d9ef">int</span>           { <span style="color:#66d9ef">return</span> len(<span style="color:#a6e22e">h</span>) }
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">func</span> (<span style="color:#a6e22e">h</span> <span style="color:#a6e22e">MinHeap</span>) <span style="color:#a6e22e">Less</span>(<span style="color:#a6e22e">i</span>, <span style="color:#a6e22e">j</span> <span style="color:#66d9ef">int</span>) <span style="color:#66d9ef">bool</span> { <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">h</span>[<span style="color:#a6e22e">i</span>] &lt; <span style="color:#a6e22e">h</span>[<span style="color:#a6e22e">j</span>] } <span style="color:#75715e">// min-heap</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">func</span> (<span style="color:#a6e22e">h</span> <span style="color:#a6e22e">MinHeap</span>) <span style="color:#a6e22e">Swap</span>(<span style="color:#a6e22e">i</span>, <span style="color:#a6e22e">j</span> <span style="color:#66d9ef">int</span>)      { <span style="color:#a6e22e">h</span>[<span style="color:#a6e22e">i</span>], <span style="color:#a6e22e">h</span>[<span style="color:#a6e22e">j</span>] = <span style="color:#a6e22e">h</span>[<span style="color:#a6e22e">j</span>], <span style="color:#a6e22e">h</span>[<span style="color:#a6e22e">i</span>] }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">func</span> (<span style="color:#a6e22e">h</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">MinHeap</span>) <span style="color:#a6e22e">Push</span>(<span style="color:#a6e22e">x</span> <span style="color:#66d9ef">interface</span>{}) {
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">*</span><span style="color:#a6e22e">h</span> = append(<span style="color:#f92672">*</span><span style="color:#a6e22e">h</span>, <span style="color:#a6e22e">x</span>.(<span style="color:#66d9ef">int</span>))
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">func</span> (<span style="color:#a6e22e">h</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">MinHeap</span>) <span style="color:#a6e22e">Pop</span>() <span style="color:#66d9ef">interface</span>{} {
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">old</span> <span style="color:#f92672">:=</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">h</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">n</span> <span style="color:#f92672">:=</span> len(<span style="color:#a6e22e">old</span>)
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">val</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">old</span>[<span style="color:#a6e22e">n</span><span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>]
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">*</span><span style="color:#a6e22e">h</span> = <span style="color:#a6e22e">old</span>[:<span style="color:#a6e22e">n</span><span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>]
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">val</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>Let&rsquo;s break these down.</p>
+<p>First we need to declare a <code>type</code> for the type of the heap. In this case we want it to be an slice of <code>int</code>.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#66d9ef">type</span> <span style="color:#a6e22e">MinHeap</span> []<span style="color:#66d9ef">int</span>
+</span></span></code></pre></div><p>Then implement the function to get the length of the heap array. Just return the <code>len()</code> of the underlying slice, nothing special.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#66d9ef">func</span> (<span style="color:#a6e22e">h</span> <span style="color:#a6e22e">MinHeap</span>) <span style="color:#a6e22e">Len</span>() <span style="color:#66d9ef">int</span>           { <span style="color:#66d9ef">return</span> len(<span style="color:#a6e22e">h</span>) }
+</span></span></code></pre></div><p>This is where it matters. Because we&rsquo;re implementing min-heap, we have to use <code>&lt;</code> comparison between the item at <code>i</code> and <code>j</code> (the next item). Making sure that the next item is larger than the current one. For max-heap, we have to use <code>&gt;</code> instead.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#66d9ef">func</span> (<span style="color:#a6e22e">h</span> <span style="color:#a6e22e">MinHeap</span>) <span style="color:#a6e22e">Less</span>(<span style="color:#a6e22e">i</span>, <span style="color:#a6e22e">j</span> <span style="color:#66d9ef">int</span>) <span style="color:#66d9ef">bool</span> { <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">h</span>[<span style="color:#a6e22e">i</span>] &lt; <span style="color:#a6e22e">h</span>[<span style="color:#a6e22e">j</span>] }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">// for max-heap :</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">// func (h MinHeap) Less(i, j int) bool { return h[i] &gt; h[j] }</span>
+</span></span></code></pre></div><p>Implement <code>Swap()</code> for the swapping mechanism. Just a normal swap between two items.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#66d9ef">func</span> (<span style="color:#a6e22e">h</span> <span style="color:#a6e22e">H</span>) <span style="color:#a6e22e">Swap</span>(<span style="color:#a6e22e">i</span>, <span style="color:#a6e22e">j</span> <span style="color:#66d9ef">int</span>) { <span style="color:#a6e22e">h</span>[<span style="color:#a6e22e">i</span>], <span style="color:#a6e22e">h</span>[<span style="color:#a6e22e">j</span>] = <span style="color:#a6e22e">h</span>[<span style="color:#a6e22e">j</span>], <span style="color:#a6e22e">h</span>[<span style="color:#a6e22e">i</span>] }
+</span></span></code></pre></div><p>Implement the <code>Push()</code> . Just a regular append to the underlying slice.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#66d9ef">func</span> (<span style="color:#a6e22e">h</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">H</span>) <span style="color:#a6e22e">Push</span>(<span style="color:#a6e22e">x</span> <span style="color:#66d9ef">interface</span>{}) { <span style="color:#f92672">*</span><span style="color:#a6e22e">h</span> = append(<span style="color:#f92672">*</span><span style="color:#a6e22e">h</span>, <span style="color:#a6e22e">x</span>.(<span style="color:#66d9ef">int</span>)) }
+</span></span></code></pre></div><p>The last thing, implement the <code>Pop()</code>. We&rsquo;ll discuss it below</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#66d9ef">func</span> (<span style="color:#a6e22e">h</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">MinHeap</span>) <span style="color:#a6e22e">Pop</span>() <span style="color:#66d9ef">interface</span>{} {
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">old</span> <span style="color:#f92672">:=</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">h</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">n</span> <span style="color:#f92672">:=</span> len(<span style="color:#a6e22e">old</span>)
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">val</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">old</span>[<span style="color:#a6e22e">n</span><span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>]
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">*</span><span style="color:#a6e22e">h</span> = <span style="color:#a6e22e">old</span>[:<span style="color:#a6e22e">n</span><span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>]
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">val</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><ol>
+<li><code>old := *h</code> -&gt; <code>h</code> is a receiving pointer (<code>*MinHeap</code>). Dereferencing it gives the underlying slice. <code>old</code> now is a <strong>copy</strong> of the slice header.</li>
+<li><code>n := len(old)</code> -&gt;  storing the length. Convenience purpose</li>
+<li><code>val := old[n-1]</code> -&gt; grab the last element. This is the min/max item that the <code>container/heap</code> library already moved there, we&rsquo;ll talk later</li>
+<li><code>*h = old[:n-1]</code> -&gt; shrink the slice by 1, removing the last element, then write the result to <code>*h</code> to update the actual heap, not just the local copy</li>
+<li><code>return val</code> -&gt; return the popped value (the min/max value) back to <code>heap.Pop()</code> in the <code>container/heap</code>, which returns it to our caller</li>
+</ol>
+<p><strong>Why does it pop from the end, not the front?</strong>
+This is the key insight. We would expect the heap to pop <code>old[0]</code> (the front) as this is the smallest/largest item (the min/max), but the <code>container/heap</code> <strong>already swapped it to the end of the slice</strong> before it calls the <code>Pop()</code>.</p>
+<p>The call sequence inside the <code>heap.Pop()</code> (the actual pop function we&rsquo;ll use later) in the <code>container/heap</code> is:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#a6e22e">swap</span>(<span style="color:#a6e22e">h</span>, <span style="color:#ae81ff">0</span>, <span style="color:#a6e22e">h</span>.<span style="color:#a6e22e">Len</span>()<span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>)      <span style="color:#75715e">// moves root to last position</span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">down</span>(<span style="color:#a6e22e">h</span>, <span style="color:#ae81ff">0</span>, <span style="color:#f92672">...</span>)            <span style="color:#75715e">// re-heapifies from root downward</span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">h</span>.<span style="color:#a6e22e">Pop</span>()                    <span style="color:#75715e">// our implemented Pop() function, remove last item</span>
+</span></span></code></pre></div><p>So by the time the implemented <code>Pop()</code> is called, the min/max is already sitting at <code>old[n-1]</code>.We just have to remove and return the item.</p>
+<h3 id="using-the-implemented-containerheap">Using the implemented container/heap</h3>
+<p>Now that we already implement the interface, let&rsquo;s use the heap.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#66d9ef">func</span> <span style="color:#a6e22e">main</span>() {
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">h</span> <span style="color:#f92672">:=</span> <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">MinHeap</span>{<span style="color:#ae81ff">5</span>, <span style="color:#ae81ff">2</span>, <span style="color:#ae81ff">8</span>, <span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">9</span>}
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">heap</span>.<span style="color:#a6e22e">Init</span>(<span style="color:#a6e22e">h</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">heap</span>.<span style="color:#a6e22e">Push</span>(<span style="color:#a6e22e">h</span>, <span style="color:#ae81ff">3</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">fmt</span>.<span style="color:#a6e22e">Println</span>(<span style="color:#e6db74">&#34;Min:&#34;</span>, (<span style="color:#f92672">*</span><span style="color:#a6e22e">h</span>)[<span style="color:#ae81ff">0</span>])     <span style="color:#75715e">// 1 — peek at min</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">fmt</span>.<span style="color:#a6e22e">Println</span>(<span style="color:#e6db74">&#34;Pop:&#34;</span>, <span style="color:#a6e22e">heap</span>.<span style="color:#a6e22e">Pop</span>(<span style="color:#a6e22e">h</span>)) <span style="color:#75715e">// 1 — remove min</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">fmt</span>.<span style="color:#a6e22e">Println</span>(<span style="color:#e6db74">&#34;Pop:&#34;</span>, <span style="color:#a6e22e">heap</span>.<span style="color:#a6e22e">Pop</span>(<span style="color:#a6e22e">h</span>)) <span style="color:#75715e">// 2</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>Notice that we use <code>heap.Push(h, 3)</code> and <code>heap.Pop(h)</code> instead of <code>h.Push(3)</code> and <code>h.Pop()</code>.</p>
+<p>We must use the push and pop functions from the <code>container/heap</code> itself because the <code>Push()</code> and <code>Pop()</code> functions we&rsquo;re implemented are low-level methods that is required to satisfy the <code>heap.Interface</code>. They only add/remove from the end of the slice and don&rsquo;t know anything about heap ordering. Calling them directly breaks the heap&rsquo;s algorithm.</p>
+<p><code>heap.Push(&amp;h, v)</code> and <code>heap.Pop(&amp;h)</code> are the actual heap-aware operations. These are from <code>container/heap</code> and do the full heap maintenance.</p>
+<ul>
+<li><code>heap.Push</code> calls out implemented <code>h.Push(v)</code> to append, then calls <code>up()</code> to bubble the new item into the correct position</li>
+<li><code>heap.Pop</code> swaps the root with the last element, calls out implemented <code>h.Pop()</code> ton remove it, then calls <code>down()</code> to restore the heap</li>
+</ul>
+<p>The relationship is:</p>
+<pre tabindex="0"><code>heap.Push(&amp;h, v) -&gt; h.Push(v) + heapify up
+heap.Pop(&amp;h) -&gt; swap root + h.Pop() + heapify down
+</code></pre><p>Our implemented <code>Push</code> / <code>Pop</code> methods are just helpers that <code>container/heap</code> calls internally. They&rsquo;re not meant to be called directly. Think of them as private implementation details that the interface forces us to make public.</p>
+<p>So, key Rules to Remember are:</p>
+<table>
+  <thead>
+      <tr>
+          <th>Operation</th>
+          <th>Function</th>
+          <th>Time Complexity</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>Build heap</td>
+          <td><code>heap.Init</code></td>
+          <td>O(n)</td>
+      </tr>
+      <tr>
+          <td>Insert</td>
+          <td><code>heap.Push</code></td>
+          <td>O(log n)</td>
+      </tr>
+      <tr>
+          <td>Remove min/max</td>
+          <td><code>heap.Pop</code></td>
+          <td>O(log n)</td>
+      </tr>
+      <tr>
+          <td>Peek min/max</td>
+          <td><code>h[0]</code></td>
+          <td>O(1)</td>
+      </tr>
+      <tr>
+          <td>Remove arbitrary</td>
+          <td><code>heap.Remove(h, i)</code></td>
+          <td>O(log n)</td>
+      </tr>
+  </tbody>
+</table>
+<ul>
+<li><strong>Always use a pointer receiver</strong> (<code>*MinHeap</code>) for <code>Push</code> and <code>Pop</code></li>
+<li><strong>Never access</strong> the underlying slice directly after mutations and always go through <code>heap.Push</code>/<code>heap.Pop</code></li>
+<li>To make a <strong>max-heap</strong>, just flip the <code>Less</code> condition (<code>&gt;</code> instead of <code>&lt;</code>)</li>
+</ul>
+<h2 id="case-study">Case Study</h2>
+<p>We&rsquo;ll use heap to solve some programming problems from leetcode. We&rsquo;ll use <a href="https://leetcode.com/problems/last-stone-weight/">#1046 - Last Stone Weight</a>, <a href="https://leetcode.com/problems/find-k-pairs-with-smallest-sums/">#373 - Find K Pairs with Smallest Sums</a>, and <a href="https://leetcode.com/problems/maximum-subsequence-score/">#2542 - Maximum Subsequence Score</a>.</p>
+<h3 id="1046-last-stone-weight">1046. Last Stone Weight</h3>
+<pre tabindex="0"><code>You are given an array of integers `stones` where `stones[i]` is the weight of the i-th stone.
+
+We are playing a game with the stones. On each turn, we choose the heaviest two stones and smash them together. 
+Suppose the heaviest two stones have weights `x` and `y` with `x &lt;= y`. 
+The result of this smash is:
+- If `x == y`, both stones are destroyed, and
+- If `x != y`, the stone of weight `x` is destroyed, and the stone of weight `y` has new weight `y - x`.
+
+At the end of the game, there is at most one stone left.
+Return the weight of the last remaining stone. If there are no stones left, return 0.
+
+Example 1:
+
+Input: stones = [2,7,4,1,8,1]
+Output: 1
+Explanation: 
+- We combine 7 and 8 to get 1 so the array converts to [2,4,1,1,1] then,
+- we combine 2 and 4 to get 2 so the array converts to [2,1,1,1] then,
+- we combine 2 and 1 to get 1 so the array converts to [1,1,1] then,
+- we combine 1 and 1 to get 0 so the array converts to [1] then that&#39;s the value of the last stone.
+
+Example 2:
+
+Input: stones = [1]
+Output: 1
+
+Constraints:
+- 1 &lt;= stones.length &lt;= 30
+- 1 &lt;= stones[i] &lt;= 1000
+</code></pre><p>By reading the problem, we can derive invariants:</p>
+<ul>
+<li>&ldquo;Choosing heaviest two stones&rdquo; :
+<ul>
+<li>implying that we have to choose two <strong>largest items</strong> from <code>stones</code>.</li>
+<li><strong>we don&rsquo;t care about the index of those two</strong> we just need to take both <strong>based on their value</strong> to be smashed together.</li>
+</ul>
+</li>
+<li>The result of the smash game :
+<ul>
+<li>there is two state of a stone, whether it survives or not. If survives it have to be smashed against the remaining stones. Signal that we need to <strong>put the surviving stone back to the array</strong></li>
+<li>the game <strong>doesn&rsquo;t</strong> dictate that the surviving stone should face another stone immediately or later <strong>as long as it is amongst the two largest stone</strong> at that time of picking.</li>
+</ul>
+</li>
+</ul>
+<p>So by these invariants we need one list that:</p>
+<ul>
+<li>let us get largest item(s) quickly and take it out of the list</li>
+<li>let us put an item without specifying a position</li>
+</ul>
+<p>These signal a <strong>priority queue</strong> where <strong>largest</strong> item(s) is prioritized to be processed.</p>
+<p>Let&rsquo;s implement it using <code>container/heap</code>:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#75715e">// MaxHeap implements heap.Interface</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">type</span> <span style="color:#a6e22e">MaxHeap</span> []<span style="color:#66d9ef">int</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">func</span> (<span style="color:#a6e22e">h</span> <span style="color:#a6e22e">MaxHeap</span>) <span style="color:#a6e22e">Len</span>() <span style="color:#66d9ef">int</span>           { <span style="color:#66d9ef">return</span> len(<span style="color:#a6e22e">h</span>) }
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">func</span> (<span style="color:#a6e22e">h</span> <span style="color:#a6e22e">MaxHeap</span>) <span style="color:#a6e22e">Less</span>(<span style="color:#a6e22e">i</span>, <span style="color:#a6e22e">j</span> <span style="color:#66d9ef">int</span>) <span style="color:#66d9ef">bool</span> { <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">h</span>[<span style="color:#a6e22e">i</span>] &gt; <span style="color:#a6e22e">h</span>[<span style="color:#a6e22e">j</span>] } <span style="color:#75715e">// reverse for max-heap</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">func</span> (<span style="color:#a6e22e">h</span> <span style="color:#a6e22e">MaxHeap</span>) <span style="color:#a6e22e">Swap</span>(<span style="color:#a6e22e">i</span>, <span style="color:#a6e22e">j</span> <span style="color:#66d9ef">int</span>)      { <span style="color:#a6e22e">h</span>[<span style="color:#a6e22e">i</span>], <span style="color:#a6e22e">h</span>[<span style="color:#a6e22e">j</span>] = <span style="color:#a6e22e">h</span>[<span style="color:#a6e22e">j</span>], <span style="color:#a6e22e">h</span>[<span style="color:#a6e22e">i</span>] }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">func</span> (<span style="color:#a6e22e">h</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">MaxHeap</span>) <span style="color:#a6e22e">Push</span>(<span style="color:#a6e22e">x</span> <span style="color:#66d9ef">any</span>) {
+</span></span><span style="display:flex;"><span>	<span style="color:#f92672">*</span><span style="color:#a6e22e">h</span> = append(<span style="color:#f92672">*</span><span style="color:#a6e22e">h</span>, <span style="color:#a6e22e">x</span>.(<span style="color:#66d9ef">int</span>))
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">func</span> (<span style="color:#a6e22e">h</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">MaxHeap</span>) <span style="color:#a6e22e">Pop</span>() <span style="color:#66d9ef">any</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">old</span> <span style="color:#f92672">:=</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">h</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">n</span> <span style="color:#f92672">:=</span> len(<span style="color:#a6e22e">old</span>)
+</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">x</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">old</span>[<span style="color:#a6e22e">n</span><span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>]
+</span></span><span style="display:flex;"><span>	<span style="color:#f92672">*</span><span style="color:#a6e22e">h</span> = <span style="color:#a6e22e">old</span>[:<span style="color:#a6e22e">n</span><span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>]
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">return</span> <span style="color:#a6e22e">x</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>The exact implementation from our earlier example.
+Then let&rsquo;s construct the main algorithm:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#f92672">package</span> <span style="color:#a6e22e">main</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">func</span> <span style="color:#a6e22e">lastStoneWeight</span>(<span style="color:#a6e22e">stones</span> []<span style="color:#66d9ef">int</span>) <span style="color:#66d9ef">int</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">h</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">MaxHeap</span>(<span style="color:#a6e22e">stones</span>)            <span style="color:#75715e">// calls the MaxHeap constructor</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">heap</span>.<span style="color:#a6e22e">Init</span>(<span style="color:#f92672">&amp;</span><span style="color:#a6e22e">h</span>)                   <span style="color:#75715e">// initialize the heap</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">for</span> <span style="color:#a6e22e">h</span>.<span style="color:#a6e22e">Len</span>() &gt; <span style="color:#ae81ff">1</span> {               <span style="color:#75715e">// as long as there are two stones</span>
+</span></span><span style="display:flex;"><span>		<span style="color:#a6e22e">y</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">heap</span>.<span style="color:#a6e22e">Pop</span>(<span style="color:#f92672">&amp;</span><span style="color:#a6e22e">h</span>).(<span style="color:#66d9ef">int</span>)     <span style="color:#75715e">// take the first largest stone out</span>
+</span></span><span style="display:flex;"><span>		<span style="color:#a6e22e">x</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">heap</span>.<span style="color:#a6e22e">Pop</span>(<span style="color:#f92672">&amp;</span><span style="color:#a6e22e">h</span>).(<span style="color:#66d9ef">int</span>)     <span style="color:#75715e">// take the next largest stone out</span>
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">y</span> <span style="color:#f92672">!=</span> <span style="color:#a6e22e">x</span> {                 <span style="color:#75715e">// if th first stone would survive</span>
+</span></span><span style="display:flex;"><span>			<span style="color:#a6e22e">heap</span>.<span style="color:#a6e22e">Push</span>(<span style="color:#f92672">&amp;</span><span style="color:#a6e22e">h</span>, <span style="color:#a6e22e">y</span><span style="color:#f92672">-</span><span style="color:#a6e22e">x</span>)      <span style="color:#75715e">// smash the stone, then put the survivor back </span>
+</span></span><span style="display:flex;"><span>		}                           <span style="color:#75715e">// otherwise don&#39;t put them back</span>
+</span></span><span style="display:flex;"><span>		                            <span style="color:#75715e">// as they are both are destroyed</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">h</span>.<span style="color:#a6e22e">Len</span>() <span style="color:#f92672">==</span> <span style="color:#ae81ff">1</span> {               <span style="color:#75715e">// if the list has one survivor</span>
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">return</span> <span style="color:#a6e22e">h</span>[<span style="color:#ae81ff">0</span>]                 <span style="color:#75715e">// return it </span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">return</span> <span style="color:#ae81ff">0</span>                        <span style="color:#75715e">// otherwise no stone survives</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="373-find-k-pairs-with-smallest-sums">373. Find K Pairs with Smallest Sums</h3>
+<pre tabindex="0"><code>You are given two integer arrays nums1 and nums2 sorted in non-decreasing order and an integer k.
+
+Define a pair (u, v) which consists of one element from the first array and one element from the second array.
+
+Return the k pairs (u1, v1), (u2, v2), ..., (uk, vk) with the smallest sums.
+
+Example 1:
+
+Input: nums1 = [1,7,11], nums2 = [2,4,6], k = 3
+Output: [[1,2],[1,4],[1,6]]
+Explanation: The first 3 pairs are returned from the sequence: [1,2],[1,4],[1,6],[7,2],[7,4],[11,2],[7,6],[11,4],[11,6]
+
+Example 2:
+
+Input: nums1 = [1,1,2], nums2 = [1,2,3], k = 2
+Output: [[1,1],[1,1]]
+Explanation: 
+The first 2 pairs are returned from the sequence: [1,1],[1,1],[1,2],[2,1],[1,2],[2,2],[1,3],[1,3],[2,3]
+
+Constraints:
+
+- 1 &lt;= nums1.length, nums2.length &lt;= 10^5
+- -10^9 &lt;= nums1[i], nums2[i] &lt;= 10^9
+- nums1 and nums2 both are sorted in non-decreasing order.
+- 1 &lt;= k &lt;= 10^4
+- k &lt;= nums1.length * nums2.length
+</code></pre><p>This one is an interesting one, and can easily trap us to make wrong abstraction. For example, at first we might derive the invariants to something like this:</p>
+<ul>
+<li>the problem ask us to output array of pair</li>
+<li>the problem ask us to output certain number of pairs out of all the combination of pairs
+So we would think that we need:</li>
+<li>a list to store the combinations of pairs from <code>nums1</code> and <code>nums2</code></li>
+<li>this list need to reorder the data so that the cheapest pair (the pair with smallest sum) would be always in front as we push new pair into it -&gt; a min priority queue</li>
+</ul>
+<p>So let&rsquo;s try to implement this idea.</p>
+<p><strong>Attempt 1</strong></p>
+<p>To make it easier to read, we create a small struct to hold the Pair</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#66d9ef">type</span> <span style="color:#a6e22e">Pair</span> <span style="color:#66d9ef">struct</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">u</span> <span style="color:#66d9ef">int</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">v</span> <span style="color:#66d9ef">int</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>Then we implement the <code>container/heap</code> as our priority queue to use the <code>Pair</code> struct</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#66d9ef">type</span> <span style="color:#a6e22e">MinHeap</span> []<span style="color:#a6e22e">Pair</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">func</span> (<span style="color:#a6e22e">h</span> <span style="color:#a6e22e">MinHeap</span>) <span style="color:#a6e22e">Len</span>() <span style="color:#66d9ef">int</span> { <span style="color:#66d9ef">return</span> len(<span style="color:#a6e22e">h</span>) }
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">func</span> (<span style="color:#a6e22e">h</span> <span style="color:#a6e22e">MinHeap</span>) <span style="color:#a6e22e">Less</span>(<span style="color:#a6e22e">i</span>, <span style="color:#a6e22e">j</span> <span style="color:#66d9ef">int</span>) <span style="color:#66d9ef">bool</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">h</span>[<span style="color:#a6e22e">i</span>].<span style="color:#a6e22e">u</span><span style="color:#f92672">+</span><span style="color:#a6e22e">h</span>[<span style="color:#a6e22e">i</span>].<span style="color:#a6e22e">v</span> &lt; <span style="color:#a6e22e">h</span>[<span style="color:#a6e22e">j</span>].<span style="color:#a6e22e">u</span><span style="color:#f92672">+</span><span style="color:#a6e22e">h</span>[<span style="color:#a6e22e">j</span>].<span style="color:#a6e22e">v</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">func</span> (<span style="color:#a6e22e">h</span> <span style="color:#a6e22e">MinHeap</span>) <span style="color:#a6e22e">Swap</span>(<span style="color:#a6e22e">i</span>, <span style="color:#a6e22e">j</span> <span style="color:#66d9ef">int</span>) {
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">h</span>[<span style="color:#a6e22e">i</span>], <span style="color:#a6e22e">h</span>[<span style="color:#a6e22e">j</span>] = <span style="color:#a6e22e">h</span>[<span style="color:#a6e22e">j</span>], <span style="color:#a6e22e">h</span>[<span style="color:#a6e22e">i</span>]
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">func</span> (<span style="color:#a6e22e">h</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">MinHeap</span>) <span style="color:#a6e22e">Push</span>(<span style="color:#a6e22e">x</span> <span style="color:#66d9ef">interface</span>{}) {
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">*</span><span style="color:#a6e22e">h</span> = append(<span style="color:#f92672">*</span><span style="color:#a6e22e">h</span>, <span style="color:#a6e22e">x</span>.(<span style="color:#a6e22e">Pair</span>))
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">func</span> (<span style="color:#a6e22e">h</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">MinHeap</span>) <span style="color:#a6e22e">Pop</span>() <span style="color:#66d9ef">interface</span>{} {
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">old</span> <span style="color:#f92672">:=</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">h</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">n</span> <span style="color:#f92672">:=</span> len(<span style="color:#a6e22e">old</span>)
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">val</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">old</span>[<span style="color:#a6e22e">n</span><span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>]
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">*</span><span style="color:#a6e22e">h</span> = <span style="color:#a6e22e">old</span>[:<span style="color:#a6e22e">n</span><span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>]
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">val</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>It&rsquo;s the same template as our usual <code>container/heap</code> implementation. Only changes is this min-heap uses <code>Pair</code> as the interface.</p>
+<p>Now let&rsquo;s code the main algorithm:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#66d9ef">func</span> <span style="color:#a6e22e">kSmallestPairs</span>(<span style="color:#a6e22e">nums1</span> []<span style="color:#66d9ef">int</span>, <span style="color:#a6e22e">nums2</span> []<span style="color:#66d9ef">int</span>, <span style="color:#a6e22e">k</span> <span style="color:#66d9ef">int</span>) [][]<span style="color:#66d9ef">int</span> {
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">h</span> <span style="color:#f92672">:=</span> <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">MinHeap</span>{}    <span style="color:#75715e">// create empty min-heap</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">heap</span>.<span style="color:#a6e22e">Init</span>(<span style="color:#a6e22e">h</span>)       <span style="color:#75715e">// init the heap</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">for</span> <span style="color:#a6e22e">i</span> <span style="color:#f92672">:=</span> <span style="color:#ae81ff">0</span>; <span style="color:#a6e22e">i</span> &lt; len(<span style="color:#a6e22e">nums1</span>); <span style="color:#a6e22e">i</span><span style="color:#f92672">++</span> {                     <span style="color:#75715e">// loop over the nums1</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">for</span> <span style="color:#a6e22e">j</span> <span style="color:#f92672">:=</span> <span style="color:#ae81ff">0</span>; <span style="color:#a6e22e">j</span> &lt; len(<span style="color:#a6e22e">nums2</span>); <span style="color:#a6e22e">j</span><span style="color:#f92672">++</span> {                 <span style="color:#75715e">// loop over the nums2</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#75715e">// push every combination of pair into the min-heap</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">heap</span>.<span style="color:#a6e22e">Push</span>(<span style="color:#a6e22e">h</span>, <span style="color:#a6e22e">Pair</span>{<span style="color:#a6e22e">u</span>: <span style="color:#a6e22e">nums1</span>[<span style="color:#a6e22e">i</span>], <span style="color:#a6e22e">v</span>: <span style="color:#a6e22e">nums2</span>[<span style="color:#a6e22e">j</span>]})
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">out</span> <span style="color:#f92672">:=</span> [][]<span style="color:#66d9ef">int</span>{} <span style="color:#75715e">// empty continer to hold the output pairs</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">for</span> <span style="color:#66d9ef">range</span> <span style="color:#a6e22e">k</span> { <span style="color:#75715e">// take a k number of pairs</span>
+</span></span><span style="display:flex;"><span>	    <span style="color:#75715e">// pop the front of the min-heap</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">front</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">heap</span>.<span style="color:#a6e22e">Pop</span>(<span style="color:#a6e22e">h</span>).(<span style="color:#a6e22e">Pair</span>) 
+</span></span><span style="display:flex;"><span>        
+</span></span><span style="display:flex;"><span>        <span style="color:#75715e">// put the popped item to output</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">out</span> = append(<span style="color:#a6e22e">out</span>, []<span style="color:#66d9ef">int</span>{<span style="color:#a6e22e">front</span>.<span style="color:#a6e22e">u</span>, <span style="color:#a6e22e">front</span>.<span style="color:#a6e22e">v</span>})
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">out</span> <span style="color:#75715e">// return the output</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>Let&rsquo;s try the example 1 and 2 of the problem:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#66d9ef">func</span> <span style="color:#a6e22e">main</span>() {
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">nums1</span> <span style="color:#f92672">:=</span> []<span style="color:#66d9ef">int</span>{<span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">7</span>, <span style="color:#ae81ff">11</span>}
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">nums2</span> <span style="color:#f92672">:=</span> []<span style="color:#66d9ef">int</span>{<span style="color:#ae81ff">2</span>, <span style="color:#ae81ff">4</span>, <span style="color:#ae81ff">6</span>}
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">k</span> <span style="color:#f92672">:=</span> <span style="color:#ae81ff">3</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">out</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">kSmallestPairs</span>(<span style="color:#a6e22e">nums1</span>, <span style="color:#a6e22e">nums2</span>, <span style="color:#a6e22e">k</span>)
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">fmt</span>.<span style="color:#a6e22e">Println</span>(<span style="color:#a6e22e">out</span>) <span style="color:#75715e">// [[1 2] [1 4] [1 6]]</span>
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">nums1</span> = []<span style="color:#66d9ef">int</span>{<span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">2</span>}
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">nums2</span> = []<span style="color:#66d9ef">int</span>{<span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">2</span>, <span style="color:#ae81ff">3</span>}
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">k</span> = <span style="color:#ae81ff">2</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">out</span> = <span style="color:#a6e22e">kSmallestPairs</span>(<span style="color:#a6e22e">nums1</span>, <span style="color:#a6e22e">nums2</span>, <span style="color:#a6e22e">k</span>)
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">fmt</span>.<span style="color:#a6e22e">Println</span>(<span style="color:#a6e22e">out</span>) <span style="color:#75715e">// [[1 1] [1 1]]</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>The output is correct! Let&rsquo;s try to submit it&hellip;</p>
+<p><a href="images/05-oom-smallest-k-pairs.avif">
+  <img src="images/05-oom-smallest-k-pairs.avif" alt="OOM leetcode for smallest k sum pairs illustration">
+
+</a></p>
+<p>Ooops&hellip; we got OOM. What happpened?</p>
+<p>Our current approach pushes <strong>all</strong> pairs into the heap upfront and that cost <code>O(m×n)</code> of space and time just for initialization. When we try to use huge inputs, for example <code>m, n = 10^5</code>, that&rsquo;s 10 billion pairs. OOM is expected.</p>
+<p>So, what&rsquo;s the better solution?</p>
+<p><strong>Attempt 2</strong></p>
+<p>There&rsquo;s one invariant we forgot to take into account: Because both arrays are <strong>sorted</strong>, we can exploit structure to avoid materializing all pairs.</p>
+<p>Think about it: if we pick <code>nums1[i]</code>, the cheapest partner is always <code>nums2[0]</code>, the next cheapest is <code>nums2[1]</code>, etc.</p>
+<p>To make it easier to understand, we can try to imagine these pairs as 2D grid, where <code>nums1</code> is the rows and <code>nums2</code> is the columns. To better illustrate this, we will use this input data onwards:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span>   <span style="color:#a6e22e">nums1</span> <span style="color:#f92672">:=</span> []<span style="color:#66d9ef">int</span>{<span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">7</span>, <span style="color:#ae81ff">10</span>, <span style="color:#ae81ff">11</span>}
+</span></span><span style="display:flex;"><span>   <span style="color:#a6e22e">nums2</span> <span style="color:#f92672">:=</span> []<span style="color:#66d9ef">int</span>{<span style="color:#ae81ff">2</span>, <span style="color:#ae81ff">4</span>, <span style="color:#ae81ff">6</span>, <span style="color:#ae81ff">8</span>}
+</span></span><span style="display:flex;"><span>   <span style="color:#a6e22e">k</span> <span style="color:#f92672">:=</span> <span style="color:#ae81ff">6</span>
+</span></span></code></pre></div><p>The output is expected to be:</p>
+<pre tabindex="0"><code>[1,2], [1,4], [1,6], [1,8], [7,2], [7,4]
+</code></pre><p>
+  <img src="images/06-min-sums-of-k-pairs-1.svg" alt="Illustration of min k sums of pairs inputs as 2d grid">
+
+</p>
+<p>In the figure above, the darker the shade of the cell, the larger its value. As we can see, the grid maintain some kind of orders. From this we can derive some invariants:</p>
+<ul>
+<li>The cheapest pair <strong>always</strong> the <code>nums1[0], nums2[0]</code> (the top-left)</li>
+<li>Each rows and columns are <strong>locally sorted</strong>: the smaller the index the cheapest is the sum. As the index increase. the sum grows larger
+<ul>
+<li>Sorted data signals that we don&rsquo;t have to enumerate all the combinations of sums. We just need to ask <strong>&ldquo;what&rsquo;s the cheapest next candidate?&rdquo;</strong> -&gt; find a way to navigate the rest.</li>
+</ul>
+</li>
+<li>Imagine we start from the top-left ([0,0]) we just need to visit the neighbors ([0,1],[1,0]) and compare which one is the smallest as it is guaranteed to be smaller than [0,0]. Then we keep on expanding to examine the remaining unvisited neighbors again ([0,2],[2,0],[1,1]) to get the cheapest sum out of them until k-number of pair is satisfied
+<ul>
+<li>This signal that we need some kind of storage that maintains order inside and able to output the smallest value &ndash;&gt; priority queue</li>
+</ul>
+</li>
+</ul>
+<p>These invariants will become our foundation for the algorithm. Let&rsquo;s simulate the walk:</p>
+<ul>
+<li><code>[0,0]: 3</code> -&gt; the cheapest pair. Pop it to the output. Out : <code>[0,0]</code></li>
+<li>Push neighbors of <code>[0,0]</code> -&gt; <code>[0,1]: 5</code> and <code>[1,0]: 9</code>
+<ul>
+<li>Check heap -&gt; <code>[0,1]: 5</code> is the smallest. Pop <code>[0,1]</code>. Heap now has <code>[1,0]</code>. Out : <code>[0,0], [0,1]</code></li>
+</ul>
+</li>
+<li>Push neighbors of <code>[0,1]</code> -&gt; <code>[0,2]: 8</code> and <code>[1,1]: 11</code>
+<ul>
+<li>Check heap -&gt; <code>[0,2]: 7</code> is the smallest. Pop <code>[0,2]</code>. Heap now has <code>[1,0], [1,1]</code>. Out : <code>[0,0], [0,1], [0,2]</code></li>
+</ul>
+</li>
+<li>Push neighbors of <code>[0,2]</code> -&gt; <code>[0,3]: 9</code> and <code>[1,2]: 13</code>
+<ul>
+<li>Check heap -&gt; <code>[0,3]: 9</code> is the smallest. Pop <code>[0,3]</code>. Heap now has <code>[1,0], [1,1], [1,2]</code>. Out: <code>[0,0], [0,1], [0,2]</code>, <code>[0,3]</code></li>
+</ul>
+</li>
+<li>Push neighbors of <code>[0,3]</code> -&gt; <code>[1,3]: 15</code>
+<ul>
+<li>Check heap -&gt; <code>[1,0]: 9</code> is the smallest. Pop <code>[1,0]</code>. Heap now has <code>[1,1], [1,2], [1,3]</code>. Out: <code>[0,0], [0,1], [0,2], [0,3], [1,0]</code></li>
+</ul>
+</li>
+<li>Push neighbors of <code>[1,0]</code> -&gt; <code>[1,1]: 11</code> and <code>[2,0]: 12</code> -&gt; <code>[1,1]</code> is already visited. ignore
+<ul>
+<li>Check heap -&gt; <code>[1,1]: 11</code> is the smallest. Pop <code>[1,1]</code>. Heap now has <code>[1,2], [2,0],[1,3]</code>. Out: <code>[0,0], [0,1], [0,2], [0,3], [1,0], [1,1]</code></li>
+</ul>
+</li>
+<li>k number of pairs (6) has been fulfilled. Stop. The output now is: <code>[0,0], [0,1], [0,2], [0,3], [1,0], [1,1]</code> which is <code>3,5,7,9,9,11</code> -&gt; <code>[1,2], [1,4], [1,6], [1,8], [7,2], [7,4]</code> -&gt; Correct!</li>
+</ul>
+<p>One small caveat of this solution: Examining 2 neighbors and bookkeeping visited cells is rather cumbersome. What if we could modify the solution so that we can just examine one neighbor of the popped cell that is always unvisited? This can be achieved by:</p>
+<ul>
+<li>Instead of one cell <code>[0,0]</code> We <strong>initialize the heap with the whole first row (or first column)</strong></li>
+<li>If we pick first row, we put a &ldquo;pointer&rdquo; to each cell so that we can know &ldquo;which row this cell came from?&rdquo;</li>
+<li>Same as well if we pick first column, we put a pointer to the cell to know which column it came from</li>
+<li>When we pop a cell, we check its pointer then advance it by one so we can get the next unvisited neighbor</li>
+</ul>
+<p>Let&rsquo;s simulate the walk once more using this trick:</p>
+<ul>
+<li>We seed the heap with the whole column : <code>[0,0], [1,0], [2,0], [3,0]</code></li>
+<li>Pop -&gt; <code>[0,0]: 3</code> is the smallest -&gt; put it in the output array
+<ul>
+<li>Check which column it came from -&gt; it&rsquo;s column <code>0</code> -&gt; advance by 1 -&gt; push <code>[0,1]</code></li>
+<li>Heap now contains: <code>[0,1], [1,0], [2,0], [3,0]</code></li>
+<li>Output: <code>[0,0]</code></li>
+</ul>
+</li>
+<li>Pop -&gt; <code>[0,1]: 5</code> is the smallest -&gt; put it in the output array
+<ul>
+<li>Check which column it came from -&gt; it&rsquo;s column <code>1</code> -&gt; advance by 1 -&gt; push <code>[0,2]</code></li>
+<li>Heap now contains <code>[0,2], [1,0], [2,0], [3,0]</code></li>
+<li>Output: <code>[0,0], [0,1]</code></li>
+</ul>
+</li>
+<li>Pop -&gt; <code>[0,2]: 7</code> is the smallest -&gt; put it in the output array
+<ul>
+<li>Check which column it came from -&gt; it&rsquo;s column 2 -&gt; advance by 1 -&gt; push <code>[0,3]</code></li>
+<li>Heap now contains <code>[1,0], [0,3], [2,0], [3,0]</code></li>
+<li>Output: <code>[0,0], [0,1], [0,2]</code></li>
+</ul>
+</li>
+<li>Pop -&gt; <code>[1,0]</code> and <code>[0,3]</code> are the smallest. Pick one -&gt; <code>[1,0]</code> -&gt; put it in the output
+<ul>
+<li>Check which column it came from -&gt; it&rsquo;s column 0 -&gt; advance by 1 -&gt; push <code>[1,1]</code></li>
+<li>Heap now contains <code>[0,3], [1,1], [2,0], [3,0]</code></li>
+<li>Output: <code>[0,0], [0,1], [0,2], [1,0]</code></li>
+</ul>
+</li>
+<li>Pop -&gt; <code>[0,3]</code> is the smallest -&gt; put it in the output
+<ul>
+<li>Check which column it came from -&gt; it&rsquo;s column 3 -&gt; already the last column, don&rsquo;t advance, don&rsquo;t push</li>
+<li>Heap now contains <code>[1,1], [2,0], [3,0]</code></li>
+<li>Output: <code>[0,0], [0,1], [0,2], [1,0], [0,3]</code></li>
+</ul>
+</li>
+<li>Pop -&gt; <code>[1,1]</code> is the smallest -&gt; put it in the output
+<ul>
+<li>k number of pairs (6) already fulfilled. Stop</li>
+<li>Check output: <code>[0,0], [0,1], [0,2], [1,0], [0,3], [1,1]</code>
+<ul>
+<li>Which is <code>3, 5, 7, 9, 9, 11</code> -&gt; <code>[1,2], [1,4], [1,6], [1,8], [7,2], [7,4]</code></li>
+<li>Correct</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p>You can visualize this walk process using the applet below. The heap will be initialized with the whole first column. Use &ldquo;Next&rdquo; button to walk one step, use &ldquo;Prev&rdquo; button to walk back. If the walk is done, press &ldquo;Reset&rdquo; button to reset the whole process. At the right side you can see the contains of the heap and the output array. At the bottom you can see the logs of the walk processs.</p>
+<iframe src="/applets/kpairs-grid.html" width="800" height="850" frameborder="0"></iframe>
+<p>Let&rsquo;s code using the last method.</p>
+<p>We need to add one more field to the <code>Pair</code> struct. the <code>column</code> field as the pointer to indicate the column where the pair is coming from.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#66d9ef">type</span> <span style="color:#a6e22e">Pair</span> <span style="color:#66d9ef">struct</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">u</span> <span style="color:#66d9ef">int</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">v</span> <span style="color:#66d9ef">int</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">column</span> <span style="color:#66d9ef">int</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>In the main algorithm, we initialize the &ldquo;seed&rdquo; heap using the whole first column. For the <code>column</code> field we put <code>0</code> as the first column is the column <code>0</code></p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#66d9ef">func</span> <span style="color:#a6e22e">kSmallestPairs</span>(<span style="color:#a6e22e">nums1</span> []<span style="color:#66d9ef">int</span>, <span style="color:#a6e22e">nums2</span> []<span style="color:#66d9ef">int</span>, <span style="color:#a6e22e">k</span> <span style="color:#66d9ef">int</span>) [][]<span style="color:#66d9ef">int</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">h</span> <span style="color:#f92672">:=</span> <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">MinHeap</span>{}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">for</span> <span style="color:#a6e22e">i</span> <span style="color:#f92672">:=</span> <span style="color:#ae81ff">0</span>; <span style="color:#a6e22e">i</span> &lt; len(<span style="color:#a6e22e">nums1</span>) <span style="color:#f92672">&amp;&amp;</span> <span style="color:#a6e22e">i</span> &lt; <span style="color:#a6e22e">k</span>; <span style="color:#a6e22e">i</span><span style="color:#f92672">++</span> {
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">heap</span>.<span style="color:#a6e22e">Push</span>(<span style="color:#a6e22e">h</span>, <span style="color:#a6e22e">Pair</span>{<span style="color:#a6e22e">u</span>: <span style="color:#a6e22e">nums1</span>[<span style="color:#a6e22e">i</span>], <span style="color:#a6e22e">v</span>: <span style="color:#a6e22e">nums2</span>[<span style="color:#ae81ff">0</span>], <span style="color:#a6e22e">column</span>: <span style="color:#ae81ff">0</span>})
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">...</span>
+</span></span></code></pre></div><p>Then we perform the walk:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span>    <span style="color:#f92672">...</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">out</span> <span style="color:#f92672">:=</span> [][]<span style="color:#66d9ef">int</span>{}                        <span style="color:#75715e">// prepare output array</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">for</span> len(<span style="color:#a6e22e">out</span>) &lt; <span style="color:#a6e22e">k</span> {                      <span style="color:#75715e">// if the output hasn&#39;t fulfilled k </span>
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">front</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">heap</span>.<span style="color:#a6e22e">Pop</span>(<span style="color:#a6e22e">h</span>).(<span style="color:#a6e22e">Pair</span>)         <span style="color:#75715e">// pop the heap</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">out</span> = append(<span style="color:#a6e22e">out</span>, []<span style="color:#66d9ef">int</span>{<span style="color:#a6e22e">front</span>.<span style="color:#a6e22e">u</span>, <span style="color:#a6e22e">front</span>.<span style="color:#a6e22e">v</span>})   <span style="color:#75715e">// put the front to output</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span> <span style="color:#a6e22e">front</span>.<span style="color:#a6e22e">column</span><span style="color:#f92672">+</span><span style="color:#ae81ff">1</span> &lt; len(<span style="color:#a6e22e">nums2</span>) {    <span style="color:#75715e">// if the column can still be advanced</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">heap</span>.<span style="color:#a6e22e">Push</span>(<span style="color:#a6e22e">h</span>, <span style="color:#a6e22e">Pair</span>{              <span style="color:#75715e">// push the unvisited neighbor</span>
+</span></span><span style="display:flex;"><span>                <span style="color:#a6e22e">u</span>:      <span style="color:#a6e22e">front</span>.<span style="color:#a6e22e">u</span>,            <span style="color:#75715e">// u is unchanged</span>
+</span></span><span style="display:flex;"><span>                <span style="color:#a6e22e">v</span>:      <span style="color:#a6e22e">nums2</span>[<span style="color:#a6e22e">front</span>.<span style="color:#a6e22e">column</span><span style="color:#f92672">+</span><span style="color:#ae81ff">1</span>], <span style="color:#75715e">// update v based on the new column</span>
+</span></span><span style="display:flex;"><span>                <span style="color:#a6e22e">column</span>: <span style="color:#a6e22e">front</span>.<span style="color:#a6e22e">column</span> <span style="color:#f92672">+</span> <span style="color:#ae81ff">1</span>,   <span style="color:#75715e">// advance column byy 1</span>
+</span></span><span style="display:flex;"><span>            })
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">out</span>                              <span style="color:#75715e">// return the output</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>The whole code:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#f92672">import</span> (
+</span></span><span style="display:flex;"><span>    <span style="color:#e6db74">&#34;container/heap&#34;</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#e6db74">&#34;fmt&#34;</span>
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">type</span> <span style="color:#a6e22e">Pair</span> <span style="color:#66d9ef">struct</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">u</span>      <span style="color:#66d9ef">int</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">v</span>      <span style="color:#66d9ef">int</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">column</span> <span style="color:#66d9ef">int</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>  
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">type</span> <span style="color:#a6e22e">MinHeap</span> []<span style="color:#a6e22e">Pair</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">func</span> (<span style="color:#a6e22e">h</span> <span style="color:#a6e22e">MinHeap</span>) <span style="color:#a6e22e">Len</span>() <span style="color:#66d9ef">int</span> { <span style="color:#66d9ef">return</span> len(<span style="color:#a6e22e">h</span>) }
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">func</span> (<span style="color:#a6e22e">h</span> <span style="color:#a6e22e">MinHeap</span>) <span style="color:#a6e22e">Less</span>(<span style="color:#a6e22e">i</span>, <span style="color:#a6e22e">j</span> <span style="color:#66d9ef">int</span>) <span style="color:#66d9ef">bool</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">h</span>[<span style="color:#a6e22e">i</span>].<span style="color:#a6e22e">u</span><span style="color:#f92672">+</span><span style="color:#a6e22e">h</span>[<span style="color:#a6e22e">i</span>].<span style="color:#a6e22e">v</span> &lt; <span style="color:#a6e22e">h</span>[<span style="color:#a6e22e">j</span>].<span style="color:#a6e22e">u</span><span style="color:#f92672">+</span><span style="color:#a6e22e">h</span>[<span style="color:#a6e22e">j</span>].<span style="color:#a6e22e">v</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">func</span> (<span style="color:#a6e22e">h</span> <span style="color:#a6e22e">MinHeap</span>) <span style="color:#a6e22e">Swap</span>(<span style="color:#a6e22e">i</span>, <span style="color:#a6e22e">j</span> <span style="color:#66d9ef">int</span>) {
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">h</span>[<span style="color:#a6e22e">i</span>], <span style="color:#a6e22e">h</span>[<span style="color:#a6e22e">j</span>] = <span style="color:#a6e22e">h</span>[<span style="color:#a6e22e">j</span>], <span style="color:#a6e22e">h</span>[<span style="color:#a6e22e">i</span>]
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">func</span> (<span style="color:#a6e22e">h</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">MinHeap</span>) <span style="color:#a6e22e">Push</span>(<span style="color:#a6e22e">x</span> <span style="color:#66d9ef">interface</span>{}) {
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">*</span><span style="color:#a6e22e">h</span> = append(<span style="color:#f92672">*</span><span style="color:#a6e22e">h</span>, <span style="color:#a6e22e">x</span>.(<span style="color:#a6e22e">Pair</span>))
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">func</span> (<span style="color:#a6e22e">h</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">MinHeap</span>) <span style="color:#a6e22e">Pop</span>() <span style="color:#66d9ef">interface</span>{} {
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">old</span> <span style="color:#f92672">:=</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">h</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">n</span> <span style="color:#f92672">:=</span> len(<span style="color:#a6e22e">old</span>)
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">val</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">old</span>[<span style="color:#a6e22e">n</span><span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>]
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">*</span><span style="color:#a6e22e">h</span> = <span style="color:#a6e22e">old</span>[:<span style="color:#a6e22e">n</span><span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>]
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">val</span>
+</span></span><span style="display:flex;"><span>} 
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">func</span> <span style="color:#a6e22e">kSmallestPairs</span>(<span style="color:#a6e22e">nums1</span> []<span style="color:#66d9ef">int</span>, <span style="color:#a6e22e">nums2</span> []<span style="color:#66d9ef">int</span>, <span style="color:#a6e22e">k</span> <span style="color:#66d9ef">int</span>) [][]<span style="color:#66d9ef">int</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">h</span> <span style="color:#f92672">:=</span> <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">MinHeap</span>{}
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">for</span> <span style="color:#a6e22e">i</span> <span style="color:#f92672">:=</span> <span style="color:#ae81ff">0</span>; <span style="color:#a6e22e">i</span> &lt; len(<span style="color:#a6e22e">nums1</span>) <span style="color:#f92672">&amp;&amp;</span> <span style="color:#a6e22e">i</span> &lt; <span style="color:#a6e22e">k</span>; <span style="color:#a6e22e">i</span><span style="color:#f92672">++</span> {
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">heap</span>.<span style="color:#a6e22e">Push</span>(<span style="color:#a6e22e">h</span>, <span style="color:#a6e22e">Pair</span>{<span style="color:#a6e22e">u</span>: <span style="color:#a6e22e">nums1</span>[<span style="color:#a6e22e">i</span>], <span style="color:#a6e22e">v</span>: <span style="color:#a6e22e">nums2</span>[<span style="color:#ae81ff">0</span>], <span style="color:#a6e22e">column</span>: <span style="color:#ae81ff">0</span>})
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">out</span> <span style="color:#f92672">:=</span> [][]<span style="color:#66d9ef">int</span>{}
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">for</span> len(<span style="color:#a6e22e">out</span>) &lt; <span style="color:#a6e22e">k</span> {
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">front</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">heap</span>.<span style="color:#a6e22e">Pop</span>(<span style="color:#a6e22e">h</span>).(<span style="color:#a6e22e">Pair</span>)
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">out</span> = append(<span style="color:#a6e22e">out</span>, []<span style="color:#66d9ef">int</span>{<span style="color:#a6e22e">front</span>.<span style="color:#a6e22e">u</span>, <span style="color:#a6e22e">front</span>.<span style="color:#a6e22e">v</span>})
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span> <span style="color:#a6e22e">front</span>.<span style="color:#a6e22e">column</span><span style="color:#f92672">+</span><span style="color:#ae81ff">1</span> &lt; len(<span style="color:#a6e22e">nums2</span>) {
+</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">heap</span>.<span style="color:#a6e22e">Push</span>(<span style="color:#a6e22e">h</span>, <span style="color:#a6e22e">Pair</span>{
+</span></span><span style="display:flex;"><span>                <span style="color:#a6e22e">u</span>:      <span style="color:#a6e22e">front</span>.<span style="color:#a6e22e">u</span>,
+</span></span><span style="display:flex;"><span>                <span style="color:#a6e22e">v</span>:      <span style="color:#a6e22e">nums2</span>[<span style="color:#a6e22e">front</span>.<span style="color:#a6e22e">column</span><span style="color:#f92672">+</span><span style="color:#ae81ff">1</span>],
+</span></span><span style="display:flex;"><span>                <span style="color:#a6e22e">column</span>: <span style="color:#a6e22e">front</span>.<span style="color:#a6e22e">column</span> <span style="color:#f92672">+</span> <span style="color:#ae81ff">1</span>,
+</span></span><span style="display:flex;"><span>            })
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>  
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">out</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>Submit the code again and now the code should pass.</p>
+<p>From these 2 attempts we can learn a lesson about heap:</p>
+<blockquote>
+<p>A heap is a &ldquo;what&rsquo;s next&rdquo; machine, not a storage container</p>
+</blockquote>
+<p>Our first solution used the heap as a bucket to dump everything into. The correct use is: <em>store only the frontier of candidates I might need next, and expand lazily.</em> This reframe that treats heap as navigator, not container will apply broadly.</p>
+<h3 id="2542-maximum-subsequence-score">2542. Maximum Subsequence Score</h3>
+<pre tabindex="0"><code>You are given two 0-indexed integer arrays nums1 and nums2 of equal length n and a positive integer k. You must choose a subsequence of indices from nums1 of length k.
+
+For chosen indices i0, i1, ..., ik - 1, your score is defined as:
+
+    The sum of the selected elements from nums1 multiplied with the minimum of the selected elements from nums2.
+    It can defined simply as: (nums1[i0] + nums1[i1] +...+ nums1[ik - 1]) * min(nums2[i0] , nums2[i1], ... ,nums2[ik - 1]).
+
+Return the maximum possible score.
+
+A subsequence of indices of an array is a set that can be derived from the set {0, 1, ..., n-1} by deleting some or no elements.
+
+ 
+
+Example 1:
+
+Input: nums1 = [1,3,3,2], nums2 = [2,1,3,4], k = 3
+Output: 12
+Explanation: 
+The four possible subsequence scores are:
+- We choose the indices 0, 1, and 2 with score = (1+3+3) * min(2,1,3) = 7.
+- We choose the indices 0, 1, and 3 with score = (1+3+2) * min(2,1,4) = 6. 
+- We choose the indices 0, 2, and 3 with score = (1+3+2) * min(2,3,4) = 12. 
+- We choose the indices 1, 2, and 3 with score = (3+3+2) * min(1,3,4) = 8.
+Therefore, we return the max score, which is 12.
+
+Example 2:
+
+Input: nums1 = [4,2,3,1,1], nums2 = [7,5,10,9,6], k = 1
+Output: 30
+Explanation: 
+Choosing index 2 is optimal: nums1[2] * nums2[2] = 3 * 10 = 30 is the maximum possible score.
+
+ 
+
+Constraints:
+
+    n == nums1.length == nums2.length
+    1 &lt;= n &lt;= 10^5
+    0 &lt;= nums1[i], nums2[j] &lt;= 10^5
+    1 &lt;= k &lt;= n
+</code></pre><p>This problem combines the &ldquo;top k&rdquo; pattern with a clever sorting strategy. The key insight is that if we sort the pairs by <code>nums2</code> in descending order, then as we iterate through the array, the current element&rsquo;s <code>nums2</code> value is guaranteed to be the minimum of any subsequence ending at that position.</p>
+<p><strong>The Strategy:</strong></p>
+<ol>
+<li>Pair up <code>nums1[i]</code> with <code>nums2[i]</code> and sort by <code>nums2</code> descending</li>
+<li>Use a min-heap to maintain the <code>k</code> largest <code>nums1</code> values seen so far</li>
+<li>When the heap reaches size <code>k</code>, calculate the score: <code>sum * current_nums2</code> (where <code>current_nums2</code> is the minimum of the subsequence due to sorting)</li>
+<li>Evict the smallest <code>nums1</code> from the heap to make room for potentially better combinations</li>
+</ol>
+<p><strong>Why this works:</strong> By sorting <code>nums2</code> descending, we fix the minimum value of our subsequence at each step. The min-heap then ensures we keep the <code>k</code> largest <code>nums1</code> values that can pair with this minimum, maximizing the sum component of the score.</p>
+<p>Here&rsquo;s the implementation:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#66d9ef">func</span> <span style="color:#a6e22e">maxScore</span>(<span style="color:#a6e22e">nums1</span> []<span style="color:#66d9ef">int</span>, <span style="color:#a6e22e">nums2</span> []<span style="color:#66d9ef">int</span>, <span style="color:#a6e22e">k</span> <span style="color:#66d9ef">int</span>) <span style="color:#66d9ef">int64</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">n</span> <span style="color:#f92672">:=</span> len(<span style="color:#a6e22e">nums1</span>)
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">pairs</span> <span style="color:#f92672">:=</span> make([][<span style="color:#ae81ff">2</span>]<span style="color:#66d9ef">int</span>, <span style="color:#a6e22e">n</span>)
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">for</span> <span style="color:#a6e22e">i</span> <span style="color:#f92672">:=</span> <span style="color:#66d9ef">range</span> <span style="color:#a6e22e">n</span> {
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">pairs</span>[<span style="color:#a6e22e">i</span>] = [<span style="color:#ae81ff">2</span>]<span style="color:#66d9ef">int</span>{<span style="color:#a6e22e">nums1</span>[<span style="color:#a6e22e">i</span>], <span style="color:#a6e22e">nums2</span>[<span style="color:#a6e22e">i</span>]}
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// Sort by nums2 descending — nums2[i] is the min for any window ending here</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">sort</span>.<span style="color:#a6e22e">Slice</span>(<span style="color:#a6e22e">pairs</span>, <span style="color:#66d9ef">func</span>(<span style="color:#a6e22e">i</span>, <span style="color:#a6e22e">j</span> <span style="color:#66d9ef">int</span>) <span style="color:#66d9ef">bool</span> {
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">pairs</span>[<span style="color:#a6e22e">i</span>][<span style="color:#ae81ff">1</span>] &gt; <span style="color:#a6e22e">pairs</span>[<span style="color:#a6e22e">j</span>][<span style="color:#ae81ff">1</span>]
+</span></span><span style="display:flex;"><span>    })
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">h</span> <span style="color:#f92672">:=</span> <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">MinHeap</span>{}
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">heap</span>.<span style="color:#a6e22e">Init</span>(<span style="color:#a6e22e">h</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">var</span> <span style="color:#a6e22e">sum</span> <span style="color:#66d9ef">int64</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">var</span> <span style="color:#a6e22e">best</span> <span style="color:#66d9ef">int64</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">for</span> <span style="color:#a6e22e">_</span>, <span style="color:#a6e22e">p</span> <span style="color:#f92672">:=</span> <span style="color:#66d9ef">range</span> <span style="color:#a6e22e">pairs</span> {
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">heap</span>.<span style="color:#a6e22e">Push</span>(<span style="color:#a6e22e">h</span>, <span style="color:#a6e22e">p</span>[<span style="color:#ae81ff">0</span>])
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">sum</span> <span style="color:#f92672">+=</span> int64(<span style="color:#a6e22e">p</span>[<span style="color:#ae81ff">0</span>])
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#75715e">// Once we have exactly k elements, evaluate and evict the smallest</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span> <span style="color:#a6e22e">h</span>.<span style="color:#a6e22e">Len</span>() <span style="color:#f92672">==</span> <span style="color:#a6e22e">k</span> {
+</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">best</span> = max(<span style="color:#a6e22e">best</span>, <span style="color:#a6e22e">sum</span><span style="color:#f92672">*</span>int64(<span style="color:#a6e22e">p</span>[<span style="color:#ae81ff">1</span>]))
+</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">sum</span> <span style="color:#f92672">-=</span> int64(<span style="color:#a6e22e">heap</span>.<span style="color:#a6e22e">Pop</span>(<span style="color:#a6e22e">h</span>).(<span style="color:#66d9ef">int</span>))
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">best</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">// Min-heap of ints</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">type</span> <span style="color:#a6e22e">MinHeap</span> []<span style="color:#66d9ef">int</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">func</span> (<span style="color:#a6e22e">h</span> <span style="color:#a6e22e">MinHeap</span>) <span style="color:#a6e22e">Len</span>() <span style="color:#66d9ef">int</span>           { <span style="color:#66d9ef">return</span> len(<span style="color:#a6e22e">h</span>) }
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">func</span> (<span style="color:#a6e22e">h</span> <span style="color:#a6e22e">MinHeap</span>) <span style="color:#a6e22e">Less</span>(<span style="color:#a6e22e">i</span>, <span style="color:#a6e22e">j</span> <span style="color:#66d9ef">int</span>) <span style="color:#66d9ef">bool</span> { <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">h</span>[<span style="color:#a6e22e">i</span>] &lt; <span style="color:#a6e22e">h</span>[<span style="color:#a6e22e">j</span>] }
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">func</span> (<span style="color:#a6e22e">h</span> <span style="color:#a6e22e">MinHeap</span>) <span style="color:#a6e22e">Swap</span>(<span style="color:#a6e22e">i</span>, <span style="color:#a6e22e">j</span> <span style="color:#66d9ef">int</span>)      { <span style="color:#a6e22e">h</span>[<span style="color:#a6e22e">i</span>], <span style="color:#a6e22e">h</span>[<span style="color:#a6e22e">j</span>] = <span style="color:#a6e22e">h</span>[<span style="color:#a6e22e">j</span>], <span style="color:#a6e22e">h</span>[<span style="color:#a6e22e">i</span>] }
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">func</span> (<span style="color:#a6e22e">h</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">MinHeap</span>) <span style="color:#a6e22e">Push</span>(<span style="color:#a6e22e">x</span> <span style="color:#66d9ef">any</span>)        { <span style="color:#f92672">*</span><span style="color:#a6e22e">h</span> = append(<span style="color:#f92672">*</span><span style="color:#a6e22e">h</span>, <span style="color:#a6e22e">x</span>.(<span style="color:#66d9ef">int</span>)) }
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">func</span> (<span style="color:#a6e22e">h</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">MinHeap</span>) <span style="color:#a6e22e">Pop</span>() <span style="color:#66d9ef">any</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">old</span> <span style="color:#f92672">:=</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">h</span>; <span style="color:#a6e22e">n</span> <span style="color:#f92672">:=</span> len(<span style="color:#a6e22e">old</span>)
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">x</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">old</span>[<span style="color:#a6e22e">n</span><span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>]; <span style="color:#f92672">*</span><span style="color:#a6e22e">h</span> = <span style="color:#a6e22e">old</span>[:<span style="color:#a6e22e">n</span><span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>]
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">x</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><strong>Complexity Analysis:</strong></p>
+<ul>
+<li><strong>Time:</strong> O(n log n) for sorting + O(n log k) for heap operations = O(n log n)</li>
+<li><strong>Space:</strong> O(n) for the pairs array + O(k) for the heap = O(n)</li>
+</ul>
+<p>This elegantly demonstrates how heaps can maintain running &ldquo;top k&rdquo; statistics while iterating through sorted data, allowing us to evaluate local optima efficiently without recomputing from scratch.</p>
+<h2 id="mathematical-efficiency-between-binary-heap-and-other-d-ary-heap">Mathematical Efficiency between Binary Heap and other d-ary Heap</h2>
+<p>Earlier we compared binary heap with other d-ary heap and it stated that the performance is not the best and it is being used as the default because of its simplicity. In this section we&rsquo;ll find out which heap is the &ldquo;best&rdquo; performance-wise.</p>
+<p>We&rsquo;re trying to minimize the cost of <strong>extract-min</strong> in a d-ary heap.</p>
+<p>For a d-ary heap:</p>
+\[Height ≈ ( \log_d n ) \]<p>At each level during bubble-down, we must find the best child among (d) children.</p>
+<p>So the rough cost is:
+</p>
+\[f(d) = d \cdot \log_d n\]<p>Using the <a href="https://www.cuemath.com/change-of-base-formula/">change-of-base formula</a>:
+</p>
+\[log_d n = \frac{\ln n}{\ln d}\]<p>Therefore:
+</p>
+\[f(d) = d \cdot \frac{\ln n}{\ln d}\]<p>Since <code>ln n</code> is constant with respect to <code>d</code>, we can ignore it and minimize:
+</p>
+\[g(d) = \frac{d}{\ln d}\]<p>Now differentiate using the <a href="https://www.khanacademy.org/math/ap-calculus-ab/ab-differentiation-1-new/ab-2-9/a/quotient-rule-review">quotient rule</a>:
+</p>
+\[g'(d) = \frac{\ln d - 1}{(\ln d)^2}\]<p>Set it equal to zero:
+</p>
+\[\ln d - 1 = 0\]\[\ln d = 1\]<p>Exponentiate both sides:
+</p>
+\[d = e\]<p>So the continuous optimum is:
+</p>
+\[d = e \approx 2.71828\]<p>Since we can only have an integer number of children:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>d = 2  (binary heap)
+</span></span><span style="display:flex;"><span>d = 3  (ternary heap)
+</span></span></code></pre></div><p>are the closest choices.</p>
+<p>Let&rsquo;s compare:</p>
+<table>
+  <thead>
+      <tr>
+          <th>d</th>
+          <th>d / ln(d)</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>2</td>
+          <td>2.885</td>
+      </tr>
+      <tr>
+          <td>3</td>
+          <td>2.731</td>
+      </tr>
+      <tr>
+          <td>4</td>
+          <td>2.885</td>
+      </tr>
+      <tr>
+          <td>5</td>
+          <td>3.107</td>
+      </tr>
+  </tbody>
+</table>
+<p>Notice something interesting:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>binary  ≈ 2.885
+</span></span><span style="display:flex;"><span>ternary ≈ 2.731
+</span></span><span style="display:flex;"><span>quaternary ≈ 2.885
+</span></span></code></pre></div><p>Ternary is theoretically best.</p>
+<p>Binary and quaternary are essentially tied.</p>
+<p>That&rsquo;s why in practice we&rsquo;ll see:</p>
+<ul>
+<li>Binary heaps in textbooks and standard libraries.</li>
+<li>4-ary heaps in some high-performance systems.</li>
+<li>Ternary heaps occasionally.</li>
+</ul>
+<p>The difference is small enough that implementation simplicity, cache behavior, and constant factors often matter more than the pure mathematical optimum.</p>
+<p>One more subtle point: this optimization is specifically for <strong>extract-min</strong> (bubble-down). If your workload has many inserts and fewer removals, a different (d) may be preferable because insert cost is approximately:</p>
+\[O(\log_d n)\]<p>which gets better as (d) increases. Real-world heap tuning is therefore a balance between:</p>
+<ul>
+<li>bubble-up cost,</li>
+<li>bubble-down cost,</li>
+<li>cache locality,</li>
+<li>implementation complexity.</li>
+</ul>
+<p>That&rsquo;s why there isn&rsquo;t a universally &ldquo;best&rdquo; <code>d</code>, even though the simple analysis points to <code>e</code>.</p>
+
+  </article>
+  <nav id="mini-toc" aria-label="Table of contents">
+    
+  </nav>
+  <script>
+    (function () {
+      const toc = document.getElementById('mini-toc');
+      if (!toc) return;
+
+      
+      const headings = Array.from(
+        document.querySelectorAll('article h2, article h3')
+      );
+
+      if (headings.length === 0) return;
+
+      
+      headings.forEach((h) => {
+        
+        if (!h.id) {
+          h.id = h.textContent.trim()
+            .toLowerCase()
+            .replace(/[^\w\s-]/g, '')
+            .replace(/\s+/g, '-');
+        }
+
+        const a = document.createElement('a');
+        a.href = '#' + h.id;
+        a.textContent = h.textContent;
+        
+        if (h.tagName === 'H3') a.style.paddingLeft = '1rem';
+        toc.appendChild(a);
+      });
+
+      
+      const links = Array.from(toc.querySelectorAll('a'));
+
+      function onScroll() {
+        let current = headings[0];
+        for (const h of headings) {
+          if (h.getBoundingClientRect().top <= 120) {
+            current = h;
+          }
+        }
+        links.forEach((a) => {
+          a.classList.toggle('active', a.getAttribute('href') === '#' + current.id);
+        });
+      }
+
+      window.addEventListener('scroll', onScroll, { passive: true });
+      onScroll(); 
+    })();
+  </script>
+</main>
+
+<div class="comment">
+  <script src="https://utteranc.es/client.js" repo="rohmanhakim/rohmanhakim.github.io" issue-term="pathname"
+    theme="github-light" crossorigin="anonymous" async>
+    </script>
+</div>
+
+
+  <footer>
+  <script>
+  const btnSwitchTheme = document.getElementById("btn-switch-theme")
+
+  function getTheme() {
+    const cookies = Object.fromEntries(
+      document.cookie.split("; ").map(c => c.split("="))
+    );
+    return cookies.theme || "light";
+  }
+
+  function invertTheme(theme) {
+    return theme == "light" ? "dark" : "light"
+  }
+
+  function applyTheme(toTheme) {
+    btnSwitchTheme.textContent = "Switch to " + invertTheme(toTheme) + " theme"
+    document.querySelector("html").style = toTheme == "dark" ? "filter: invert(1);" : ""
+    neuralizeChildrenColor("img", toTheme)
+    neuralizeChildrenColor("button", toTheme)
+    neuralizeChildrenColor(".resume-download-button", toTheme)
+    neuralizeChildrenColor(".highlight", toTheme)
+  }
+
+  function neuralizeChildrenColor(child, toTheme) {
+    document.querySelectorAll(child).forEach(el => {
+      el.style = toTheme == "dark" ? "filter: invert(1);" : ""
+    })
+  }
+
+  btnSwitchTheme.addEventListener("click", (event) => {
+    const theme = getTheme()
+    const newTheme = invertTheme(theme)
+    document.cookie = "theme=" + newTheme + ";path=/"
+    applyTheme(newTheme)
+  })
+
+  applyTheme(getTheme())
+</script>
+<div class="footer-container">
+  <p>Copyright © 2026 <a href="/">Muhammad Arif Rohman Hakim</a></p>
+  <ul>
+    <li>
+      <a href="https://www.linkedin.com/in/rohmanhakim/">LinkedIn</a>
+    </li>
+    <li>
+      <a href="https://github.com/rohmanhakim/">GitHub</a>
+    </li>
+    <li>
+      <a href="/about">About</a>
+    </li>
+    <li>
+      <a href="/index.xml" title="RSS Feed">RSS</a>
+    </li>
+  </ul>
+</div>
+  
+  </footer>
+  </body>
+</html>

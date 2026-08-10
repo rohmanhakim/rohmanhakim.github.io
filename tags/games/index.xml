@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Games on Arif&#39;s Homepage</title>
+    <link>https://arifrohman.com/tags/games/</link>
+    <description>Recent content in Games on Arif&#39;s Homepage</description>
+    <generator>Hugo</generator>
+    <language>en-us</language>
+    <lastBuildDate>Mon, 10 Aug 2026 00:00:00 +0000</lastBuildDate>
+    <atom:link href="https://arifrohman.com/tags/games/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Running Worms W.M.D Natively on PikaOS Linux</title>
+      <link>https://arifrohman.com/post/running-worms-w.m.d-natively-on-pikaos-linux/</link>
+      <pubDate>Mon, 10 Aug 2026 00:00:00 +0000</pubDate>
+      <guid>https://arifrohman.com/post/running-worms-w.m.d-natively-on-pikaos-linux/</guid>
+      <description>How I got the native Linux build of Worms W.M.D running on Debian-based Linux using Steam Runtime libraries and a launch wrapper.</description>
+    </item>
+  </channel>
+</rss>

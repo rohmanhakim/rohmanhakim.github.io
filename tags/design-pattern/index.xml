@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Design-Pattern on Arif&#39;s Homepage</title>
+    <link>https://arifrohman.com/tags/design-pattern/</link>
+    <description>Recent content in Design-Pattern on Arif&#39;s Homepage</description>
+    <generator>Hugo</generator>
+    <language>en-us</language>
+    <lastBuildDate>Sun, 08 Feb 2026 00:00:00 +0000</lastBuildDate>
+    <atom:link href="https://arifrohman.com/tags/design-pattern/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Designing Error Returns in Go: A Case Study in Domain-Orchestration Separation</title>
+      <link>https://arifrohman.com/engineering-note/designing-error-returns-in-go-a-case-study-in-domain-orchestration-separation/</link>
+      <pubDate>Sun, 08 Feb 2026 00:00:00 +0000</pubDate>
+      <guid>https://arifrohman.com/engineering-note/designing-error-returns-in-go-a-case-study-in-domain-orchestration-separation/</guid>
+      <description>Explore how to design error-returning functions in Go that separate domain logic from orchestration concerns. Learn why a custom RepairableResult type beats (bool, error) and error-only patterns when building observable, testable, and reusable validation logic in production systems.</description>
+    </item>
+  </channel>
+</rss>

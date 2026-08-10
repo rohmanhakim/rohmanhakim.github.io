@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Web-Development on Arif&#39;s Homepage</title>
+    <link>https://arifrohman.com/tags/web-development/</link>
+    <description>Recent content in Web-Development on Arif&#39;s Homepage</description>
+    <generator>Hugo</generator>
+    <language>en-us</language>
+    <lastBuildDate>Wed, 27 Aug 2025 00:00:00 +0000</lastBuildDate>
+    <atom:link href="https://arifrohman.com/tags/web-development/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Simple Javascript Theme Switcher Using Cookie</title>
+      <link>https://arifrohman.com/post/simple-javascript-theme-switcher-using-cookie/</link>
+      <pubDate>Wed, 27 Aug 2025 00:00:00 +0000</pubDate>
+      <guid>https://arifrohman.com/post/simple-javascript-theme-switcher-using-cookie/</guid>
+      <description>Learn how to implement a simple dark/light theme switcher for your website using JavaScript and cookies, leveraging the CSS invert filter for quick theme toggling.</description>
+    </item>
+  </channel>
+</rss>

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Debugging on Arif&#39;s Homepage</title>
+    <link>https://arifrohman.com/tags/debugging/</link>
+    <description>Recent content in Debugging on Arif&#39;s Homepage</description>
+    <generator>Hugo</generator>
+    <language>en-us</language>
+    <lastBuildDate>Thu, 09 Jul 2026 00:00:00 +0000</lastBuildDate>
+    <atom:link href="https://arifrohman.com/tags/debugging/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Go&#39;s Delve Suddenly Print `Building .`</title>
+      <link>https://arifrohman.com/post/gos-delve-suddenly-print-building-./</link>
+      <pubDate>Thu, 09 Jul 2026 00:00:00 +0000</pubDate>
+      <guid>https://arifrohman.com/post/gos-delve-suddenly-print-building-./</guid>
+      <description>A short note on why VS Code&amp;rsquo;s Go debugger started printing &amp;lsquo;Building .&amp;rsquo; after upgrading to Delve 1.27.0, and whether it can be disabled.</description>
+    </item>
+  </channel>
+</rss>

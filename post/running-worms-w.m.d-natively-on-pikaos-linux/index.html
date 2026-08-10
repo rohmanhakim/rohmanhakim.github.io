@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Running Worms W.M.D Natively on PikaOS Linux | Arif&#39;s Homepage</title>
+    <link rel="stylesheet" href="/css/style.css" />
+    <link rel="stylesheet" href="/css/fonts.css" />
+    
+  
+    <meta name="description" content="A practical troubleshooting guide for running the 2016 native Linux Worms W.M.D build on modern Debian-based systems by combining Steam Runtime libraries, Debian multiarch paths, and an LD_PRELOAD wrapper." />
+  
+  <link rel="stylesheet" href="/css/mini-toc.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Source+Sans+3:ital,wght@0,200..900;1,200..900&display=swap" rel="stylesheet">
+  
+
+<link rel="stylesheet" href="/css/custom.css">
+<link rel="stylesheet" href="/css/yahoo.css">
+
+
+<link rel="alternate" type="application/rss+xml" title="Arif&#39;s Homepage - RSS Feed" href="https://arifrohman.com/index.xml" />
+
+<link rel="alternate" type="application/rss+xml" title="Arif&#39;s Homepage - Posts RSS Feed" href="https://arifrohman.com/post/index.xml" />
+
+
+
+
+
+<script data-goatcounter="https://arifrohman.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
+<div class="header-container">
+  <h1><a href="/">Arif's Homepage</a></h1>
+  <ul>
+    <li>
+      <a href="https://www.linkedin.com/in/rohmanhakim/">LinkedIn</a>
+    </li>
+    <li>
+      <a href="https://github.com/rohmanhakim/">GitHub</a>
+    </li>
+    <li>
+      <a href="/about">About</a>
+    </li>
+    <li>
+      <a href="/index.xml" title="RSS Feed">RSS</a>
+    </li>
+  </ul>
+  <button id="btn-switch-theme">Switch to dark Theme</button>
+</div>
+  </head>
+
+  <body>
+
+<div class="article-meta">
+  <h1><span class="title">Running Worms W.M.D Natively on PikaOS Linux</span></h1>
+  
+</div>
+
+<main>
+  <article>
+    <p>I recently tried to get the native Linux version of <strong>Worms W.M.D</strong> running on my Linux desktop. The game is available on <a href="https://store.steampowered.com/app/327030/Worms_WMD/">Steam</a> with a native Linux build, so there is no reason to use Proton just to get the game running.</p>
+<p>Unfortunately, the Linux build is from 2016, and some of its library dependencies are old enough that they no longer line up with a modern Debian-based system.</p>
+<p>I eventually got it working by combining the old libraries provided by Steam Runtime with a couple of libraries from my system.</p>
+<p>This is how I did it.</p>
+<h2 id="the-problem">The problem</h2>
+<p>After installing Worms W.M.D from Steam and launching the native Linux version, the game failed immediately.</p>
+<p>The interesting part is that the game itself is not particularly broken. The problem is its runtime dependencies.</p>
+<p>There is an <a href="https://bbs.archlinux.org/viewtopic.php?id=307036">Arch Linux forum thread about exactly this problem</a>, where users investigated the dependencies of the Linux build and eventually found a way to run it on modern Arch Linux.</p>
+<p>The important discovery was that Steam already ships a number of old libraries through <strong>Steam Runtime</strong>.</p>
+<p>The game therefore doesn&rsquo;t necessarily need us to install ancient versions of everything system-wide.</p>
+<hr>
+<h2 id="missing-libtheora">Missing <code>libtheora</code></h2>
+<p>The first missing libraries I encountered were:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>libtheoraenc.so.1
+</span></span><span style="display:flex;"><span>libtheoradec.so.1
+</span></span></code></pre></div><p>I installed them from the distribution packages:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>sudo apt install libtheoraenc1
+</span></span><span style="display:flex;"><span>sudo apt install libtheoradec1
+</span></span></code></pre></div><p>After that, those dependencies were resolved.</p>
+<p>I deliberately didn&rsquo;t try to solve this by creating symlinks between different versions of the libraries. A shared library&rsquo;s SONAME represents an ABI, so simply making:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>libfoo.so.1 -&gt; libfoo.so.2
+</span></span></code></pre></div><p>isn&rsquo;t necessarily safe.</p>
+<hr>
+<h2 id="the-steam-runtime">The Steam Runtime</h2>
+<p>The next interesting part was discovering that Steam already contains many of the old libraries that Worms expects.</p>
+<p>For example, Steam provides:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>libidn.so.11
+</span></span><span style="display:flex;"><span>libgcrypt.so.11
+</span></span><span style="display:flex;"><span>librtmp.so.0
+</span></span><span style="display:flex;"><span>libcurl-gnutls.so.4
+</span></span><span style="display:flex;"><span>libdbus-1.so.3
+</span></span></code></pre></div><p>The relevant Steam Runtime directory on my installation is:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>~/.local/share/Steam/ubuntu12_32/steam-runtime
+</span></span></code></pre></div><p>The Arch forum solution uses <code>LD_PRELOAD</code> to force the game to use these libraries.</p>
+<p>However, there was one important difference between the Arch setup and mine.</p>
+<hr>
+<h2 id="debians-multiarch-library-path">Debian&rsquo;s multiarch library path</h2>
+<p>The Arch solution uses:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>/usr/lib/libwavpack.so.1
+</span></span></code></pre></div><p>But my system is <a href="https://wiki.pika-os.com/en/home">PikaOS</a> (Debian sid-based) and uses the multiarch directory:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>/usr/lib/x86_64-linux-gnu/
+</span></span></code></pre></div><p>So the actual library on my system is:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>/usr/lib/x86_64-linux-gnu/libwavpack.so.1
+</span></span></code></pre></div><p>This distinction turned out to be important.</p>
+<p>When I used the original Arch path, the game failed with:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>error while loading shared libraries:
+</span></span><span style="display:flex;"><span>libwavpack.so.1: cannot open shared object file
+</span></span></code></pre></div><p>Changing the path to:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>/usr/lib/x86_64-linux-gnu/libwavpack.so.1
+</span></span></code></pre></div><p>fixed that particular problem.</p>
+<hr>
+<h2 id="libidnso11"><code>libidn.so.11</code></h2>
+<p>There was one more old dependency I couldn&rsquo;t directly satisfy with the current system library.</p>
+<p>My system has:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>libidn.so.12
+</span></span></code></pre></div><p>while the application expects:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>libidn.so.11
+</span></span></code></pre></div><p>I created the following symlink:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>sudo ln -s <span style="color:#ae81ff">\
+</span></span></span><span style="display:flex;"><span>    /usr/lib/x86_64-linux-gnu/libidn.so.12 <span style="color:#ae81ff">\
+</span></span></span><span style="display:flex;"><span>    /usr/lib/x86_64-linux-gnu/libidn.so.11
+</span></span></code></pre></div><p>This worked for me.</p>
+<p>This is worth calling out because <strong>SONAME compatibility is not guaranteed merely because two libraries have similar names</strong>. In general, replacing an older ABI with a newer one using a symlink is something to approach cautiously. In this particular case, it allowed Worms W.M.D to start on my system.</p>
+<hr>
+<h1 id="the-wrapper-script">The wrapper script</h1>
+<p>At this point I needed a way to inject the old libraries into the game&rsquo;s process without modifying the system globally.</p>
+<p>I created <code>MyRun.sh</code> in the Worms W.M.D installation directory:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>~/.local/share/Steam/steamapps/common/WormsWMD/MyRun.sh
+</span></span></code></pre></div><p>The final version is:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span><span style="color:#75715e">#!/bin/bash
+</span></span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>_libraries<span style="color:#f92672">=(</span>
+</span></span><span style="display:flex;"><span>    lib/libQt5*.so.5
+</span></span><span style="display:flex;"><span>    /usr/lib/x86_64-linux-gnu/libwavpack.so.1
+</span></span><span style="display:flex;"><span>    <span style="color:#e6db74">&#34;</span>$STEAM_RUNTIME<span style="color:#e6db74">&#34;</span>/amd64/lib/x86_64-linux-gnu/libdbus-1.so.3
+</span></span><span style="display:flex;"><span>    <span style="color:#e6db74">&#34;</span>$STEAM_RUNTIME<span style="color:#e6db74">&#34;</span>/usr/lib/x86_64-linux-gnu/libcurl-gnutls.so.4
+</span></span><span style="display:flex;"><span>    <span style="color:#e6db74">&#34;</span>$STEAM_RUNTIME<span style="color:#e6db74">&#34;</span>/usr/lib/x86_64-linux-gnu/libidn.so.11
+</span></span><span style="display:flex;"><span>    <span style="color:#e6db74">&#34;</span>$STEAM_RUNTIME<span style="color:#e6db74">&#34;</span>/lib/x86_64-linux-gnu/libgcrypt.so.11
+</span></span><span style="display:flex;"><span>    <span style="color:#e6db74">&#34;</span>$STEAM_RUNTIME<span style="color:#e6db74">&#34;</span>/usr/lib/x86_64-linux-gnu/librtmp.so.0
+</span></span><span style="display:flex;"><span><span style="color:#f92672">)</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>export LD_PRELOAD<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;</span><span style="color:#e6db74">${</span>_libraries[@]<span style="color:#e6db74">}</span><span style="color:#e6db74">&#34;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>unset QT_QPA_PLATFORM
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>exec <span style="color:#e6db74">&#34;</span>$@<span style="color:#e6db74">&#34;</span> &gt; <span style="color:#e6db74">&#34;</span>$HOME<span style="color:#e6db74">/worms-stdout.log&#34;</span> 2&gt; <span style="color:#e6db74">&#34;</span>$HOME<span style="color:#e6db74">/worms-stderr.log&#34;</span>
+</span></span></code></pre></div><p>Then:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>chmod +x MyRun.sh
+</span></span></code></pre></div><p>There are two particularly important parts here.</p>
+<h3 id="ld_preload"><code>LD_PRELOAD</code></h3>
+<p>This forces the game to load the libraries listed above before its normal dependency resolution.</p>
+<p>The Qt libraries are included from the game&rsquo;s own <code>lib</code> directory:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>lib/libQt5*.so.5
+</span></span></code></pre></div><p>while the older system dependencies come from either the local system or Steam Runtime.</p>
+<h3 id="unset-qt_qpa_platform"><code>unset QT_QPA_PLATFORM</code></h3>
+<p>This one took some debugging.</p>
+<p>On my desktop, <code>QT_QPA_PLATFORM</code> was set in the environment. The value was incompatible with the old Qt version bundled with Worms W.M.D.</p>
+<p>Removing it before starting the game avoids that problem:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>unset QT_QPA_PLATFORM
+</span></span></code></pre></div><hr>
+<h1 id="configuring-steam">Configuring Steam</h1>
+<p>The important part is <strong>how the script is launched</strong>.</p>
+<p>In:</p>
+<p><strong>Steam → Worms W.M.D → Properties → General → Launch Options</strong></p>
+<p>I use:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>./MyRun.sh %command%
+</span></span></code></pre></div><p>Steam then effectively constructs this chain:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Steam
+</span></span><span style="display:flex;"><span>  ↓
+</span></span><span style="display:flex;"><span>MyRun.sh
+</span></span><span style="display:flex;"><span>  ↓
+</span></span><span style="display:flex;"><span>steam-launch-wrapper
+</span></span><span style="display:flex;"><span>  ↓
+</span></span><span style="display:flex;"><span>SteamLinuxRuntime
+</span></span><span style="display:flex;"><span>  ↓
+</span></span><span style="display:flex;"><span>Worms W.M.Dx64
+</span></span></code></pre></div><p>I initially wasn&rsquo;t sure whether Steam was actually executing my wrapper script, so I temporarily replaced it with a small debugging script that wrote to:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>/tmp/worms-test.log
+</span></span></code></pre></div><p>That confirmed that Steam was invoking the script correctly.</p>
+<p>The resulting command line showed:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>steam-launch-wrapper
+</span></span><span style="display:flex;"><span>    ↓
+</span></span><span style="display:flex;"><span>reaper
+</span></span><span style="display:flex;"><span>    ↓
+</span></span><span style="display:flex;"><span>SteamLinuxRuntime_soldier
+</span></span><span style="display:flex;"><span>    ↓
+</span></span><span style="display:flex;"><span>scout-on-soldier-entry-point-v2
+</span></span><span style="display:flex;"><span>    ↓
+</span></span><span style="display:flex;"><span>Worms W.M.Dx64
+</span></span></code></pre></div><p>That was useful because it eliminated Steam&rsquo;s launch configuration as a possible problem.</p>
+<hr>
+<h1 id="debugging-with-ld_preload">Debugging with <code>LD_PRELOAD</code></h1>
+<p>The first time I got the wrapper running, the stderr log contained a lot of messages like:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>ERROR: ld.so: object &#39;...&#39; from LD_PRELOAD cannot be preloaded
+</span></span><span style="display:flex;"><span>(wrong ELF class: ELFCLASS64): ignored.
+</span></span></code></pre></div><p>At first this looked like a serious problem.</p>
+<p>It wasn&rsquo;t.</p>
+<p>Steam&rsquo;s launch chain includes 32-bit components, while the libraries we&rsquo;re preloading are 64-bit. Those 32-bit processes therefore complain when they inherit the 64-bit <code>LD_PRELOAD</code>.</p>
+<p>The important error was further down:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Worms W.M.Dx64:
+</span></span><span style="display:flex;"><span>error while loading shared libraries:
+</span></span><span style="display:flex;"><span>libwavpack.so.1: cannot open shared object file
+</span></span></code></pre></div><p>That was what led me to the Debian multiarch path:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>/usr/lib/x86_64-linux-gnu/libwavpack.so.1
+</span></span></code></pre></div><p>After correcting that path, the game launched.</p>
+<hr>
+<h1 id="logging">Logging</h1>
+<p>The wrapper also redirects the game&rsquo;s output:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>exec <span style="color:#e6db74">&#34;</span>$@<span style="color:#e6db74">&#34;</span> &gt; <span style="color:#e6db74">&#34;</span>$HOME<span style="color:#e6db74">/worms-stdout.log&#34;</span> 2&gt; <span style="color:#e6db74">&#34;</span>$HOME<span style="color:#e6db74">/worms-stderr.log&#34;</span>
+</span></span></code></pre></div><p>So when something goes wrong, I can check:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>cat ~/worms-stdout.log
+</span></span><span style="display:flex;"><span>cat ~/worms-stderr.log
+</span></span></code></pre></div><p>The stderr log was particularly useful during the troubleshooting process because it exposed the missing libraries instead of just having Steam silently return to the Play button.</p>
+<hr>
+<h1 id="final-setup">Final setup</h1>
+<p>The resulting setup is quite small:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>WormsWMD/
+</span></span><span style="display:flex;"><span>├── MyRun.sh
+</span></span><span style="display:flex;"><span>├── Run.sh
+</span></span><span style="display:flex;"><span>├── Worms W.M.Dx64
+</span></span><span style="display:flex;"><span>├── lib/
+</span></span><span style="display:flex;"><span>├── platforms/
+</span></span><span style="display:flex;"><span>└── ...
+</span></span></code></pre></div><p>Steam Launch Options:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>./MyRun.sh %command%
+</span></span></code></pre></div><p>Installed packages:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>sudo apt install libtheoraenc1
+</span></span><span style="display:flex;"><span>sudo apt install libtheoradec1
+</span></span></code></pre></div><p>And the additional compatibility symlink:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>sudo ln -s <span style="color:#ae81ff">\
+</span></span></span><span style="display:flex;"><span>    /usr/lib/x86_64-linux-gnu/libidn.so.12 <span style="color:#ae81ff">\
+</span></span></span><span style="display:flex;"><span>    /usr/lib/x86_64-linux-gnu/libidn.so.11
+</span></span></code></pre></div><p>The final wrapper:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span><span style="color:#75715e">#!/bin/bash
+</span></span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>_libraries<span style="color:#f92672">=(</span>
+</span></span><span style="display:flex;"><span>    lib/libQt5*.so.5
+</span></span><span style="display:flex;"><span>    /usr/lib/x86_64-linux-gnu/libwavpack.so.1
+</span></span><span style="display:flex;"><span>    <span style="color:#e6db74">&#34;</span>$STEAM_RUNTIME<span style="color:#e6db74">&#34;</span>/amd64/lib/x86_64-linux-gnu/libdbus-1.so.3
+</span></span><span style="display:flex;"><span>    <span style="color:#e6db74">&#34;</span>$STEAM_RUNTIME<span style="color:#e6db74">&#34;</span>/usr/lib/x86_64-linux-gnu/libcurl-gnutls.so.4
+</span></span><span style="display:flex;"><span>    <span style="color:#e6db74">&#34;</span>$STEAM_RUNTIME<span style="color:#e6db74">&#34;</span>/usr/lib/x86_64-linux-gnu/libidn.so.11
+</span></span><span style="display:flex;"><span>    <span style="color:#e6db74">&#34;</span>$STEAM_RUNTIME<span style="color:#e6db74">&#34;</span>/lib/x86_64-linux-gnu/libgcrypt.so.11
+</span></span><span style="display:flex;"><span>    <span style="color:#e6db74">&#34;</span>$STEAM_RUNTIME<span style="color:#e6db74">&#34;</span>/usr/lib/x86_64-linux-gnu/librtmp.so.0
+</span></span><span style="display:flex;"><span><span style="color:#f92672">)</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>export LD_PRELOAD<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;</span><span style="color:#e6db74">${</span>_libraries[@]<span style="color:#e6db74">}</span><span style="color:#e6db74">&#34;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>unset QT_QPA_PLATFORM
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>exec <span style="color:#e6db74">&#34;</span>$@<span style="color:#e6db74">&#34;</span> &gt; <span style="color:#e6db74">&#34;</span>$HOME<span style="color:#e6db74">/worms-stdout.log&#34;</span> 2&gt; <span style="color:#e6db74">&#34;</span>$HOME<span style="color:#e6db74">/worms-stderr.log&#34;</span>
+</span></span></code></pre></div><p>And that&rsquo;s it.</p>
+<h2 id="conclusion">Conclusion</h2>
+<p>The interesting thing about this problem is that <strong>the native Linux build of Worms W.M.D isn&rsquo;t fundamentally unusable on a modern Linux distribution</strong>. It is mostly a matter of dealing with the dependency environment it was built for in 2016.</p>
+<p>Steam Runtime is particularly useful here because it still contains many of the older libraries required by the game.</p>
+<p>The Arch Linux forum thread provided the key insight, but the solution needed a small adjustment for my Debian-based system: specifically, using Debian&rsquo;s multiarch path for <code>libwavpack.so.1</code>.</p>
+<p>So the final solution is essentially:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>old Worms W.M.D binary
+</span></span><span style="display:flex;"><span>        +
+</span></span><span style="display:flex;"><span>game&#39;s bundled Qt libraries
+</span></span><span style="display:flex;"><span>        +
+</span></span><span style="display:flex;"><span>old libraries from Steam Runtime
+</span></span><span style="display:flex;"><span>        +
+</span></span><span style="display:flex;"><span>Debian&#39;s libwavpack
+</span></span><span style="display:flex;"><span>        ↓
+</span></span><span style="display:flex;"><span>      works
+</span></span></code></pre></div><p>And importantly, I can run the native Linux version directly through Steam without Proton.</p>
+<p><a href="https://bbs.archlinux.org/viewtopic.php?id=307036&amp;utm_source=chatgpt.com">Arch Linux BBS — Problems with Worms WMD</a></p>
+
+  </article>
+  <nav id="mini-toc" aria-label="Table of contents">
+    
+  </nav>
+  <script>
+    (function () {
+      const toc = document.getElementById('mini-toc');
+      if (!toc) return;
+
+      
+      const headings = Array.from(
+        document.querySelectorAll('article h2, article h3')
+      );
+
+      if (headings.length === 0) return;
+
+      
+      headings.forEach((h) => {
+        
+        if (!h.id) {
+          h.id = h.textContent.trim()
+            .toLowerCase()
+            .replace(/[^\w\s-]/g, '')
+            .replace(/\s+/g, '-');
+        }
+
+        const a = document.createElement('a');
+        a.href = '#' + h.id;
+        a.textContent = h.textContent;
+        
+        if (h.tagName === 'H3') a.style.paddingLeft = '1rem';
+        toc.appendChild(a);
+      });
+
+      
+      const links = Array.from(toc.querySelectorAll('a'));
+
+      function onScroll() {
+        let current = headings[0];
+        for (const h of headings) {
+          if (h.getBoundingClientRect().top <= 120) {
+            current = h;
+          }
+        }
+        links.forEach((a) => {
+          a.classList.toggle('active', a.getAttribute('href') === '#' + current.id);
+        });
+      }
+
+      window.addEventListener('scroll', onScroll, { passive: true });
+      onScroll(); 
+    })();
+  </script>
+</main>
+
+<div class="comment">
+  <script src="https://utteranc.es/client.js" repo="rohmanhakim/rohmanhakim.github.io" issue-term="pathname"
+    theme="github-light" crossorigin="anonymous" async>
+    </script>
+</div>
+
+
+  <footer>
+  <script>
+  const btnSwitchTheme = document.getElementById("btn-switch-theme")
+
+  function getTheme() {
+    const cookies = Object.fromEntries(
+      document.cookie.split("; ").map(c => c.split("="))
+    );
+    return cookies.theme || "light";
+  }
+
+  function invertTheme(theme) {
+    return theme == "light" ? "dark" : "light"
+  }
+
+  function applyTheme(toTheme) {
+    btnSwitchTheme.textContent = "Switch to " + invertTheme(toTheme) + " theme"
+    document.querySelector("html").style = toTheme == "dark" ? "filter: invert(1);" : ""
+    neuralizeChildrenColor("img", toTheme)
+    neuralizeChildrenColor("button", toTheme)
+    neuralizeChildrenColor(".resume-download-button", toTheme)
+    neuralizeChildrenColor(".highlight", toTheme)
+  }
+
+  function neuralizeChildrenColor(child, toTheme) {
+    document.querySelectorAll(child).forEach(el => {
+      el.style = toTheme == "dark" ? "filter: invert(1);" : ""
+    })
+  }
+
+  btnSwitchTheme.addEventListener("click", (event) => {
+    const theme = getTheme()
+    const newTheme = invertTheme(theme)
+    document.cookie = "theme=" + newTheme + ";path=/"
+    applyTheme(newTheme)
+  })
+
+  applyTheme(getTheme())
+</script>
+<div class="footer-container">
+  <p>Copyright © 2026 <a href="/">Muhammad Arif Rohman Hakim</a></p>
+  <ul>
+    <li>
+      <a href="https://www.linkedin.com/in/rohmanhakim/">LinkedIn</a>
+    </li>
+    <li>
+      <a href="https://github.com/rohmanhakim/">GitHub</a>
+    </li>
+    <li>
+      <a href="/about">About</a>
+    </li>
+    <li>
+      <a href="/index.xml" title="RSS Feed">RSS</a>
+    </li>
+  </ul>
+</div>
+  
+  </footer>
+  </body>
+</html>

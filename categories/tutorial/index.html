@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Arif&#39;s Homepage</title>
+    <link rel="stylesheet" href="/css/style.css" />
+    <link rel="stylesheet" href="/css/fonts.css" />
+    
+<link rel="stylesheet" href="/css/custom.css">
+<link rel="stylesheet" href="/css/yahoo.css">
+
+
+<link rel="alternate" type="application/rss+xml" title="Arif&#39;s Homepage - RSS Feed" href="https://arifrohman.com/index.xml" />
+
+
+
+
+
+<script data-goatcounter="https://arifrohman.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
+<div class="header-container">
+  <h1><a href="/">Arif's Homepage</a></h1>
+  <ul>
+    <li>
+      <a href="https://www.linkedin.com/in/rohmanhakim/">LinkedIn</a>
+    </li>
+    <li>
+      <a href="https://github.com/rohmanhakim/">GitHub</a>
+    </li>
+    <li>
+      <a href="/about">About</a>
+    </li>
+    <li>
+      <a href="/index.xml" title="RSS Feed">RSS</a>
+    </li>
+  </ul>
+  <button id="btn-switch-theme">Switch to dark Theme</button>
+</div>
+  </head>
+
+  <body>
+
+
+<h1>Tutorial</h1>
+
+
+
+
+<main class="portal-container">
+  <h1>Hello</h1>
+  <br />
+  I’m a software engineer working on backend systems, infrastructure, and media platforms.
+  </br>
+  I enjoy building and understanding systems that need to be reliable, maintainable, and practical to operate over time.
+  <br />
+  Sometimes i just tinker with computer out of curiousity.
+  <br />
+  This site is a personal space where I document what I learn, reflect, and think through ideas at my own pace
+  <br />
+  <br />
+  For further contacts, see <a href="/about">About</a> page.
+  <br />
+  <h2>What you’ll find here:</h2>
+  <div class="module">
+    <h3 class="module-header">Engineering Notes</h3>
+    
+    
+      
+      
+        
+          <p class="last-updated">Last updated: 
+
+
+
+
+
+
+27th
+ February 2026</p>
+        
+      
+    
+    <div class="module-content">
+      <p>Focused writings drawn from my experience as a software engineer. These are typically technical and practical:
+        system design decisions, infrastructure trade-offs, operational lessons, and things I wish I had written down
+        earlier.</p>
+
+      <ul class="post-titles">
+        
+        
+        
+      </ul>
+    </div>
+  </div>
+  <div class="module">
+    <h3 class="module-header">Latest Posts</h3>
+    
+    
+      
+      
+        
+          <p class="last-updated">Last updated: 
+
+
+
+
+
+
+10th
+ August 2026</p>
+        
+      
+    
+    <div class="module-content">
+      <p>Everything else. Longer reflections, ideas in progress, observations outside of day-to-day engineering work,
+        and
+        topics that don’t neatly fit into technical notes but are still wants to share with you.</p>
+      <ul class="post-titles">
+        
+        
+        
+        <li>
+          <a href="/post/debugging-a-vs-code-extension-against-another-project-without-losing-your-extensions/">Debugging a VS Code Extension Against Another Project (Without Losing Your Extensions)</a>
+        </li>
+        
+        <li>
+          <a href="/post/fixing-path-issue-in-vscode-terminal/">Fixing PATH issue in VS Code Terminal</a>
+        </li>
+        
+        <li>
+          <a href="/post/setting-up-github-mcp-server-in-cline/">Setting Up GitHub MCP Server in Cline</a>
+        </li>
+        
+        <li>
+          <a href="/post/running-agentic-coding-for-free-my-openrouter-plus-cline-setup/">Running Agentic Coding for Free: My OpenRouter + Cline Setup</a>
+        </li>
+        
+      </ul>
+    </div>
+  </div>
+</main>
+
+  <footer>
+  <script>
+  const btnSwitchTheme = document.getElementById("btn-switch-theme")
+
+  function getTheme() {
+    const cookies = Object.fromEntries(
+      document.cookie.split("; ").map(c => c.split("="))
+    );
+    return cookies.theme || "light";
+  }
+
+  function invertTheme(theme) {
+    return theme == "light" ? "dark" : "light"
+  }
+
+  function applyTheme(toTheme) {
+    btnSwitchTheme.textContent = "Switch to " + invertTheme(toTheme) + " theme"
+    document.querySelector("html").style = toTheme == "dark" ? "filter: invert(1);" : ""
+    neuralizeChildrenColor("img", toTheme)
+    neuralizeChildrenColor("button", toTheme)
+    neuralizeChildrenColor(".resume-download-button", toTheme)
+    neuralizeChildrenColor(".highlight", toTheme)
+  }
+
+  function neuralizeChildrenColor(child, toTheme) {
+    document.querySelectorAll(child).forEach(el => {
+      el.style = toTheme == "dark" ? "filter: invert(1);" : ""
+    })
+  }
+
+  btnSwitchTheme.addEventListener("click", (event) => {
+    const theme = getTheme()
+    const newTheme = invertTheme(theme)
+    document.cookie = "theme=" + newTheme + ";path=/"
+    applyTheme(newTheme)
+  })
+
+  applyTheme(getTheme())
+</script>
+<div class="footer-container">
+  <p>Copyright © 2026 <a href="/">Muhammad Arif Rohman Hakim</a></p>
+  <ul>
+    <li>
+      <a href="https://www.linkedin.com/in/rohmanhakim/">LinkedIn</a>
+    </li>
+    <li>
+      <a href="https://github.com/rohmanhakim/">GitHub</a>
+    </li>
+    <li>
+      <a href="/about">About</a>
+    </li>
+    <li>
+      <a href="/index.xml" title="RSS Feed">RSS</a>
+    </li>
+  </ul>
+</div>
+  
+  </footer>
+  </body>
+</html>

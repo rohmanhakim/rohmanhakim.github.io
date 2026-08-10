@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Storing States as Bitmasks | Arif&#39;s Homepage</title>
+    <link rel="stylesheet" href="/css/style.css" />
+    <link rel="stylesheet" href="/css/fonts.css" />
+    
+  
+    <meta name="description" content="A post describing a technique to store states of collection of data inside an integer." />
+  
+  <link rel="stylesheet" href="/css/mini-toc.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Source+Sans+3:ital,wght@0,200..900;1,200..900&display=swap" rel="stylesheet">
+  
+
+<link rel="stylesheet" href="/css/custom.css">
+<link rel="stylesheet" href="/css/yahoo.css">
+
+
+<link rel="alternate" type="application/rss+xml" title="Arif&#39;s Homepage - RSS Feed" href="https://arifrohman.com/index.xml" />
+
+<link rel="alternate" type="application/rss+xml" title="Arif&#39;s Homepage - Posts RSS Feed" href="https://arifrohman.com/post/index.xml" />
+
+
+
+
+
+<script data-goatcounter="https://arifrohman.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
+<div class="header-container">
+  <h1><a href="/">Arif's Homepage</a></h1>
+  <ul>
+    <li>
+      <a href="https://www.linkedin.com/in/rohmanhakim/">LinkedIn</a>
+    </li>
+    <li>
+      <a href="https://github.com/rohmanhakim/">GitHub</a>
+    </li>
+    <li>
+      <a href="/about">About</a>
+    </li>
+    <li>
+      <a href="/index.xml" title="RSS Feed">RSS</a>
+    </li>
+  </ul>
+  <button id="btn-switch-theme">Switch to dark Theme</button>
+</div>
+  </head>
+
+  <body>
+
+<div class="article-meta">
+  <h1><span class="title">Storing States as Bitmasks</span></h1>
+  
+</div>
+
+<main>
+  <article>
+    <h1 id="the-idea">The Idea</h1>
+<p>Suppose you need to track a Boolean state for every items in a collection. First idea that comes to mind is to use a hash map:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#a6e22e">states</span> <span style="color:#f92672">:=</span> make(<span style="color:#66d9ef">map</span>[<span style="color:#66d9ef">string</span>]<span style="color:#66d9ef">bool</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">states</span>[<span style="color:#e6db74">&#34;item1&#34;</span>] = <span style="color:#66d9ef">true</span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">states</span>[<span style="color:#e6db74">&#34;item2&#34;</span>] = <span style="color:#66d9ef">false</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">...</span>
+</span></span></code></pre></div><p>This was fine for most data. But if your data has certain set of range, there is a more efficient and faster way to store this: <strong>Bitmask</strong>.</p>
+<p>Imagine i have to store the state of appearance of English alphabets in a string:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#a6e22e">appears</span> <span style="color:#f92672">:=</span> make(<span style="color:#66d9ef">map</span>[<span style="color:#66d9ef">rune</span>]<span style="color:#66d9ef">bool</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">word</span> <span style="color:#f92672">:=</span> <span style="color:#e6db74">&#34;abBCab&#34;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">for</span> <span style="color:#a6e22e">_</span>, <span style="color:#a6e22e">c</span> <span style="color:#f92672">:=</span> <span style="color:#66d9ef">range</span> <span style="color:#a6e22e">word</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">appears</span>[<span style="color:#a6e22e">c</span>] = <span style="color:#66d9ef">true</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">...</span>
+</span></span></code></pre></div><p>Notice that the range of the data (letters) has the size of 26 (a-z). So instead i can just store it inside a single 32-bit integer as bits (1 for true, 0 for false).</p>
+<p>For example, appearances of alphabets inside string &ldquo;abe&rdquo; can be stored as:</p>
+<p>
+  <img src="1-bitmask.svg" alt="Bitmask representation of 26-characters english alphabets">
+
+</p>
+<p>To mark letter <code>'b'</code> (index 1) as appeared:</p>
+<pre tabindex="0"><code>1 &lt;&lt; 1
+</code></pre><p>The binary representation would be:</p>
+<pre tabindex="0"><code>0000...00010
+</code></pre><p>For letter &lsquo;a&rsquo; (index 0): <code>1 &lt;&lt; 0</code>   -&gt; <code>0000...00001</code> .</p>
+<p>For letter &rsquo;e&rsquo; (index 4): <code>1 &lt;&lt; 4</code>   -&gt; <code>0000...10000</code> .</p>
+<h1 id="implementation">Implementation</h1>
+<h3 id="storing-new-value">Storing new value</h3>
+<p>Suppose we want to store the appearance of letters in a 32-bit integer <code>appears</code>. To mark the new character <code>newChar</code> as being appeared without clearing the already saved value, we would use bitwise <code>OR</code> operator (<code>|</code>):</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#a6e22e">appears</span> <span style="color:#f92672">|=</span> ( <span style="color:#ae81ff">1</span> <span style="color:#f92672">&lt;&lt;</span> (<span style="color:#a6e22e">newChar</span> <span style="color:#f92672">-</span> <span style="color:#e6db74">&#39;a&#39;</span>))
+</span></span></code></pre></div><p>Explanation:</p>
+<ul>
+<li>In Go, a rune (character) just an alias of 32-bit integer (int32) for its <a href="https://en.wikipedia.org/wiki/Unicode">Unicode</a> code point.</li>
+<li>We want the character <code>'a'</code> to always reserve the index 0, so subtracting a character with it will return an index relative to it. For Example <code>'e' - 'a'</code> would the same as <code>101 - 97</code> , therefore will return <code>4</code> as we want the character <code>e</code> to be stored in index 4</li>
+<li><code>1 &lt;&lt; index</code> : shifts a <code>1</code> into the index</li>
+<li><code>|=</code> : apply bitwise <code>OR</code> in the <code>appears</code> variable without disturbing the other bits. For example if the existing bits are <code>0101</code>, the operation <code>0101 |= 0011 will return </code>0111`</li>
+</ul>
+<h3 id="counting-the-data">Counting the data</h3>
+<p>To count how many &ldquo;set&rdquo; bits are in the data (for 32-bit integer):</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#f92672">import</span> (
+</span></span><span style="display:flex;"><span>	<span style="color:#e6db74">&#34;math/bits&#34;</span>
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">...</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">bits</span>.<span style="color:#a6e22e">OnesCount32</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">...</span>
+</span></span></code></pre></div><p>For example if the stored bits are <code>01111011</code> that function will return <code>6</code>.</p>
+<h2 id="case-study">Case Study</h2>
+<p>We will implement this technique to solve leetcode <a href="https://leetcode.com/problems/count-the-number-of-special-characters-i">#3120 - Count the Number of Special Characters I</a>.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-markdown" data-lang="markdown"><span style="display:flex;"><span>You are given a string <span style="color:#e6db74">`word`</span>. A letter is called &#34;special&#34; if it appears BOTH in lowercase and uppercase in <span style="color:#e6db74">`word`</span>.
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>Return the number of <span style="font-weight:bold">**special**</span> letters in <span style="color:#e6db74">`word`</span>.
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>Example 1:
+</span></span><span style="display:flex;"><span>	Input: word = &#34;aaAbcBC&#34;
+</span></span><span style="display:flex;"><span>	Output: 3
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	Explanation:
+</span></span><span style="display:flex;"><span>	The special characters in <span style="color:#e6db74">`word`</span> are <span style="color:#e6db74">`&#39;a&#39;`</span>, <span style="color:#e6db74">`&#39;b&#39;`</span>, and <span style="color:#e6db74">`&#39;c&#39;`</span>.
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>Example 2:
+</span></span><span style="display:flex;"><span>	Input: word = &#34;abc&#34;
+</span></span><span style="display:flex;"><span>	Output: 0
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	Explanation:
+</span></span><span style="display:flex;"><span>	No character in <span style="color:#e6db74">`word`</span> appears in uppercase.
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>Example 3:
+</span></span><span style="display:flex;"><span>	Input: word = &#34;abBCab&#34;
+</span></span><span style="display:flex;"><span>	Output: 1
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	Explanation:
+</span></span><span style="display:flex;"><span>	The only special character in <span style="color:#e6db74">`word`</span> is <span style="color:#e6db74">`&#39;b&#39;`</span>.
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>Constraints:
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">-</span> 1 &lt;= word.length &lt;= 50
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">-</span> word consists of only lowercase and uppercase English letters.
+</span></span></code></pre></div><p>To solve this problem we have to find a way to store the appearance of each letter, both the lowercase and uppercase versions, inside the <code>word</code> to a variable.</p>
+<h3 id="using-hash-map">Using hash map</h3>
+<p>The common way is to provide hash maps for this:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#a6e22e">lower</span> <span style="color:#f92672">:=</span> make(<span style="color:#66d9ef">map</span>[<span style="color:#66d9ef">rune</span>]<span style="color:#66d9ef">bool</span>) 
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">upper</span> <span style="color:#f92672">:=</span> make(<span style="color:#66d9ef">map</span>[<span style="color:#66d9ef">rune</span>]<span style="color:#66d9ef">bool</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">for</span> <span style="color:#a6e22e">_</span>, <span style="color:#a6e22e">c</span> <span style="color:#f92672">:=</span> <span style="color:#66d9ef">range</span> <span style="color:#a6e22e">word</span> {
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">c</span> <span style="color:#f92672">&gt;=</span> <span style="color:#e6db74">&#39;a&#39;</span> <span style="color:#f92672">&amp;&amp;</span> <span style="color:#a6e22e">c</span> <span style="color:#f92672">&lt;=</span> <span style="color:#e6db74">&#39;z&#39;</span> { <span style="color:#75715e">// if it&#39;s in the lowercase alphabets range</span>
+</span></span><span style="display:flex;"><span>		<span style="color:#a6e22e">lower</span>[<span style="color:#a6e22e">c</span>] = <span style="color:#66d9ef">true</span> 
+</span></span><span style="display:flex;"><span>	} <span style="color:#66d9ef">else</span> { 
+</span></span><span style="display:flex;"><span>		<span style="color:#a6e22e">upper</span>[<span style="color:#a6e22e">c</span>] = <span style="color:#66d9ef">true</span> 
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>Then we count the appearance of characters ONLY if the lowercase and uppercase versions of the character has marked true:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#a6e22e">count</span> <span style="color:#f92672">:=</span> <span style="color:#ae81ff">0</span> 
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">for</span> <span style="color:#a6e22e">c</span> <span style="color:#f92672">:=</span> <span style="color:#66d9ef">range</span> <span style="color:#a6e22e">lower</span> { 
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">upper</span>[<span style="color:#a6e22e">c</span><span style="color:#f92672">-</span><span style="color:#ae81ff">32</span>] { <span style="color:#75715e">// &#39;a&#39;-&#39;A&#39; == 32 </span>
+</span></span><span style="display:flex;"><span>		<span style="color:#a6e22e">count</span><span style="color:#f92672">++</span> 
+</span></span><span style="display:flex;"><span>	} 
+</span></span><span style="display:flex;"><span>} 
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">return</span> <span style="color:#a6e22e">count</span>
+</span></span></code></pre></div><h3 id="using-bitmask">Using bitmask</h3>
+<p>The structure of the algorithm is similar to the hash map version but we use two <code>int32</code> instead of <code>map</code>. Then we apply the bitwise insertion as we&rsquo;ve discussed in teh previous section:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#66d9ef">var</span> <span style="color:#a6e22e">lower</span>, <span style="color:#a6e22e">upper</span> <span style="color:#66d9ef">int32</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">for</span> <span style="color:#a6e22e">_</span>, <span style="color:#a6e22e">c</span> <span style="color:#f92672">:=</span> <span style="color:#66d9ef">range</span> <span style="color:#a6e22e">word</span> { 
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">c</span> <span style="color:#f92672">&gt;=</span> <span style="color:#e6db74">&#39;a&#39;</span> <span style="color:#f92672">&amp;&amp;</span> <span style="color:#a6e22e">c</span> <span style="color:#f92672">&lt;=</span> <span style="color:#e6db74">&#39;z&#39;</span> { 
+</span></span><span style="display:flex;"><span>		<span style="color:#a6e22e">lower</span> <span style="color:#f92672">|=</span> <span style="color:#ae81ff">1</span> <span style="color:#f92672">&lt;&lt;</span> (<span style="color:#a6e22e">c</span> <span style="color:#f92672">-</span> <span style="color:#e6db74">&#39;a&#39;</span>) 
+</span></span><span style="display:flex;"><span>	} <span style="color:#66d9ef">else</span> { 
+</span></span><span style="display:flex;"><span>		<span style="color:#a6e22e">upper</span> <span style="color:#f92672">|=</span> <span style="color:#ae81ff">1</span> <span style="color:#f92672">&lt;&lt;</span> (<span style="color:#a6e22e">c</span> <span style="color:#f92672">-</span> <span style="color:#e6db74">&#39;A&#39;</span>) 
+</span></span><span style="display:flex;"><span>	} 
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>To count the appearance of the &ldquo;special&rdquo; characters, we apply bitwise <code>AND</code> operator to both <code>lower</code> and <code>upper</code> then use <code>bits.OnesCount32</code> to count the resulting <code>1</code>s:</p>
+<pre tabindex="0"><code>return bits.OnesCount32(uint32(lower &amp; upper))
+</code></pre><p>Full code:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#f92672">import</span> (
+</span></span><span style="display:flex;"><span>	<span style="color:#e6db74">&#34;math/bits&#34;</span>
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">func</span> <span style="color:#a6e22e">numberOfSpecialChars</span>(<span style="color:#a6e22e">word</span> <span style="color:#66d9ef">string</span>) <span style="color:#66d9ef">int</span> { 
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">var</span> <span style="color:#a6e22e">lower</span>, <span style="color:#a6e22e">upper</span> <span style="color:#66d9ef">int32</span> 
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">for</span> <span style="color:#a6e22e">_</span>, <span style="color:#a6e22e">c</span> <span style="color:#f92672">:=</span> <span style="color:#66d9ef">range</span> <span style="color:#a6e22e">word</span> { 
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">c</span> <span style="color:#f92672">&gt;=</span> <span style="color:#e6db74">&#39;a&#39;</span> <span style="color:#f92672">&amp;&amp;</span> <span style="color:#a6e22e">c</span> <span style="color:#f92672">&lt;=</span> <span style="color:#e6db74">&#39;z&#39;</span> { 
+</span></span><span style="display:flex;"><span>			<span style="color:#a6e22e">lower</span> <span style="color:#f92672">|=</span> <span style="color:#ae81ff">1</span> <span style="color:#f92672">&lt;&lt;</span> (<span style="color:#a6e22e">c</span> <span style="color:#f92672">-</span> <span style="color:#e6db74">&#39;a&#39;</span>) 
+</span></span><span style="display:flex;"><span>		} <span style="color:#66d9ef">else</span> { 
+</span></span><span style="display:flex;"><span>			<span style="color:#a6e22e">upper</span> <span style="color:#f92672">|=</span> <span style="color:#ae81ff">1</span> <span style="color:#f92672">&lt;&lt;</span> (<span style="color:#a6e22e">c</span> <span style="color:#f92672">-</span> <span style="color:#e6db74">&#39;A&#39;</span>) 
+</span></span><span style="display:flex;"><span>		} 
+</span></span><span style="display:flex;"><span>	} 
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">return</span> <span style="color:#a6e22e">bits</span>.<span style="color:#a6e22e">OnesCount32</span>(uint32(<span style="color:#a6e22e">lower</span> <span style="color:#f92672">&amp;</span> <span style="color:#a6e22e">upper</span>)) 
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="analysis">Analysis</h3>
+<p>Why is this better than a map?</p>
+<table>
+  <thead>
+      <tr>
+          <th></th>
+          <th>Map</th>
+          <th>Bitmask</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>Space</td>
+          <td>~50 bytes per entry</td>
+          <td>8 bytes total (two <code>int32</code>s)</td>
+      </tr>
+      <tr>
+          <td>Lookup</td>
+          <td>Hash + pointer chase</td>
+          <td>Single bit test (<code>&amp; 1</code>)</td>
+      </tr>
+      <tr>
+          <td>&ldquo;Count set&rdquo;</td>
+          <td>Look over map</td>
+          <td>1 CPU instruction (<code>POPCNT</code>)</td>
+      </tr>
+  </tbody>
+</table>
+<p>For this specific problem, 26 possible letters, Boolean state only, a bitmask is the perfect fit. The technique generalizes to any problem where you&rsquo;re tracking membership across a small, fixed set of items.</p>
+<h2 id="beyond-the-32-slots-of-states">Beyond the 32 slots of states</h2>
+<p>If our problem requires more than 32 slots to store the states, Go provides some data types we can use:</p>
+<table>
+  <thead>
+      <tr>
+          <th>Type</th>
+          <th>Bits/slots</th>
+          <th>Use when</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td><code>int32</code></td>
+          <td>32</td>
+          <td>up to 32 items (r.g. 26 alphabets)</td>
+      </tr>
+      <tr>
+          <td><code>int64</code></td>
+          <td>64</td>
+          <td>up to 64 items</td>
+      </tr>
+      <tr>
+          <td>uint64</td>
+          <td>64</td>
+          <td>same, but <code>bits.OnesCount64</code> works directly</td>
+      </tr>
+  </tbody>
+</table>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#66d9ef">var</span> <span style="color:#a6e22e">mask</span> <span style="color:#66d9ef">uint64</span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">mask</span> <span style="color:#f92672">|=</span> <span style="color:#ae81ff">1</span> <span style="color:#f92672">&lt;&lt;</span> (<span style="color:#a6e22e">c</span> <span style="color:#f92672">-</span> <span style="color:#e6db74">&#39;a&#39;</span>)  <span style="color:#75715e">// same pattern as before, just bigger</span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">bits</span>.<span style="color:#a6e22e">OnesCount64</span>(<span style="color:#a6e22e">mask</span>)
+</span></span></code></pre></div><h3 id="beyond-64-slots">Beyond 64 slots</h3>
+<p>Go&rsquo;s <code>math/big</code> package gives you an arbitrary-precision integer, which you can use as an unlimited bitmask:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#f92672">import</span> <span style="color:#e6db74">&#34;math/big&#34;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">mask</span> <span style="color:#f92672">:=</span> new(<span style="color:#a6e22e">big</span>.<span style="color:#a6e22e">Int</span>)
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">mask</span>.<span style="color:#a6e22e">SetBit</span>(<span style="color:#a6e22e">mask</span>, <span style="color:#a6e22e">index</span>, <span style="color:#ae81ff">1</span>)  <span style="color:#75715e">// set bit at position `index`</span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">mask</span>.<span style="color:#a6e22e">Bit</span>(<span style="color:#a6e22e">index</span>)               <span style="color:#75715e">// read bit (returns 0 or 1)</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">// AND two masks</span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">result</span> <span style="color:#f92672">:=</span> new(<span style="color:#a6e22e">big</span>.<span style="color:#a6e22e">Int</span>).<span style="color:#a6e22e">And</span>(<span style="color:#a6e22e">maskA</span>, <span style="color:#a6e22e">maskB</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">// Count set bits</span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">result</span>.<span style="color:#a6e22e">OnesCount</span>()  <span style="color:#75715e">// added in Go 1.24</span>
+</span></span></code></pre></div><p>The downside is heap allocation and slower operations, no single CPU instruction anymore (the hardware&rsquo;s <code>POPCNT</code>).</p>
+<p>For faster data type for 64 slots, use <code>[]uint64</code>.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#66d9ef">type</span> <span style="color:#a6e22e">BitSet</span> []<span style="color:#66d9ef">uint64</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">func</span> <span style="color:#a6e22e">NewBitSet</span>(<span style="color:#a6e22e">size</span> <span style="color:#66d9ef">int</span>) <span style="color:#a6e22e">BitSet</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> make(<span style="color:#a6e22e">BitSet</span>, (<span style="color:#a6e22e">size</span><span style="color:#f92672">+</span><span style="color:#ae81ff">63</span>)<span style="color:#f92672">/</span><span style="color:#ae81ff">64</span>)  <span style="color:#75715e">// how many uint64s needed</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">func</span> (<span style="color:#a6e22e">b</span> <span style="color:#a6e22e">BitSet</span>) <span style="color:#a6e22e">Set</span>(<span style="color:#a6e22e">i</span> <span style="color:#66d9ef">int</span>) {
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">b</span>[<span style="color:#a6e22e">i</span><span style="color:#f92672">/</span><span style="color:#ae81ff">64</span>] <span style="color:#f92672">|=</span> <span style="color:#ae81ff">1</span> <span style="color:#f92672">&lt;&lt;</span> (<span style="color:#a6e22e">i</span> <span style="color:#f92672">%</span> <span style="color:#ae81ff">64</span>)   <span style="color:#75715e">// which chunk, which bit within it</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">func</span> (<span style="color:#a6e22e">b</span> <span style="color:#a6e22e">BitSet</span>) <span style="color:#a6e22e">Get</span>(<span style="color:#a6e22e">i</span> <span style="color:#66d9ef">int</span>) <span style="color:#66d9ef">bool</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">b</span>[<span style="color:#a6e22e">i</span><span style="color:#f92672">/</span><span style="color:#ae81ff">64</span>]<span style="color:#f92672">&gt;&gt;</span>(<span style="color:#a6e22e">i</span><span style="color:#f92672">%</span><span style="color:#ae81ff">64</span>)<span style="color:#f92672">&amp;</span><span style="color:#ae81ff">1</span> <span style="color:#f92672">==</span> <span style="color:#ae81ff">1</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">func</span> (<span style="color:#a6e22e">b</span> <span style="color:#a6e22e">BitSet</span>) <span style="color:#a6e22e">OnesCount</span>() <span style="color:#66d9ef">int</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">count</span> <span style="color:#f92672">:=</span> <span style="color:#ae81ff">0</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">for</span> <span style="color:#a6e22e">_</span>, <span style="color:#a6e22e">word</span> <span style="color:#f92672">:=</span> <span style="color:#66d9ef">range</span> <span style="color:#a6e22e">b</span> {
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">count</span> <span style="color:#f92672">+=</span> <span style="color:#a6e22e">bits</span>.<span style="color:#a6e22e">OnesCount64</span>(<span style="color:#a6e22e">word</span>)
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">count</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>This stays fast because each <code>uint64</code> chunk still uses the hardware <code>POPCNT</code> instruction. This is also what competitive programmers and standard libraries actually use. We manually chunk the bits across multiple <code>uint64</code>s.</p>
+<p>The <code>[]uint64</code> slice approach is also what libraries like <a href="github.com/bits-and-blooms/bitset"><code>github.com/bits-and-blooms/bitset</code></a> give us, with AND/OR/count already implemented, worth knowing it exists for contest or production use.</p>
+
+  </article>
+  <nav id="mini-toc" aria-label="Table of contents">
+    
+  </nav>
+  <script>
+    (function () {
+      const toc = document.getElementById('mini-toc');
+      if (!toc) return;
+
+      
+      const headings = Array.from(
+        document.querySelectorAll('article h2, article h3')
+      );
+
+      if (headings.length === 0) return;
+
+      
+      headings.forEach((h) => {
+        
+        if (!h.id) {
+          h.id = h.textContent.trim()
+            .toLowerCase()
+            .replace(/[^\w\s-]/g, '')
+            .replace(/\s+/g, '-');
+        }
+
+        const a = document.createElement('a');
+        a.href = '#' + h.id;
+        a.textContent = h.textContent;
+        
+        if (h.tagName === 'H3') a.style.paddingLeft = '1rem';
+        toc.appendChild(a);
+      });
+
+      
+      const links = Array.from(toc.querySelectorAll('a'));
+
+      function onScroll() {
+        let current = headings[0];
+        for (const h of headings) {
+          if (h.getBoundingClientRect().top <= 120) {
+            current = h;
+          }
+        }
+        links.forEach((a) => {
+          a.classList.toggle('active', a.getAttribute('href') === '#' + current.id);
+        });
+      }
+
+      window.addEventListener('scroll', onScroll, { passive: true });
+      onScroll(); 
+    })();
+  </script>
+</main>
+
+<div class="comment">
+  <script src="https://utteranc.es/client.js" repo="rohmanhakim/rohmanhakim.github.io" issue-term="pathname"
+    theme="github-light" crossorigin="anonymous" async>
+    </script>
+</div>
+
+
+  <footer>
+  <script>
+  const btnSwitchTheme = document.getElementById("btn-switch-theme")
+
+  function getTheme() {
+    const cookies = Object.fromEntries(
+      document.cookie.split("; ").map(c => c.split("="))
+    );
+    return cookies.theme || "light";
+  }
+
+  function invertTheme(theme) {
+    return theme == "light" ? "dark" : "light"
+  }
+
+  function applyTheme(toTheme) {
+    btnSwitchTheme.textContent = "Switch to " + invertTheme(toTheme) + " theme"
+    document.querySelector("html").style = toTheme == "dark" ? "filter: invert(1);" : ""
+    neuralizeChildrenColor("img", toTheme)
+    neuralizeChildrenColor("button", toTheme)
+    neuralizeChildrenColor(".resume-download-button", toTheme)
+    neuralizeChildrenColor(".highlight", toTheme)
+  }
+
+  function neuralizeChildrenColor(child, toTheme) {
+    document.querySelectorAll(child).forEach(el => {
+      el.style = toTheme == "dark" ? "filter: invert(1);" : ""
+    })
+  }
+
+  btnSwitchTheme.addEventListener("click", (event) => {
+    const theme = getTheme()
+    const newTheme = invertTheme(theme)
+    document.cookie = "theme=" + newTheme + ";path=/"
+    applyTheme(newTheme)
+  })
+
+  applyTheme(getTheme())
+</script>
+<div class="footer-container">
+  <p>Copyright © 2026 <a href="/">Muhammad Arif Rohman Hakim</a></p>
+  <ul>
+    <li>
+      <a href="https://www.linkedin.com/in/rohmanhakim/">LinkedIn</a>
+    </li>
+    <li>
+      <a href="https://github.com/rohmanhakim/">GitHub</a>
+    </li>
+    <li>
+      <a href="/about">About</a>
+    </li>
+    <li>
+      <a href="/index.xml" title="RSS Feed">RSS</a>
+    </li>
+  </ul>
+</div>
+  
+  </footer>
+  </body>
+</html>

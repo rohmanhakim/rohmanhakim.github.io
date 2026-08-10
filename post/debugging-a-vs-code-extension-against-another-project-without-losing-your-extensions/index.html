@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Debugging a VS Code Extension Against Another Project (Without Losing Your Extensions) | Arif&#39;s Homepage</title>
+    <link rel="stylesheet" href="/css/style.css" />
+    <link rel="stylesheet" href="/css/fonts.css" />
+    
+  
+    <meta name="description" content="Use VS Code profiles and launch arguments to run your extension in a clean debugging environment against another repository, without inheriting unnecessary extensions." />
+  
+  <link rel="stylesheet" href="/css/mini-toc.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Source+Sans+3:ital,wght@0,200..900;1,200..900&display=swap" rel="stylesheet">
+  
+
+<link rel="stylesheet" href="/css/custom.css">
+<link rel="stylesheet" href="/css/yahoo.css">
+
+
+<link rel="alternate" type="application/rss+xml" title="Arif&#39;s Homepage - RSS Feed" href="https://arifrohman.com/index.xml" />
+
+<link rel="alternate" type="application/rss+xml" title="Arif&#39;s Homepage - Posts RSS Feed" href="https://arifrohman.com/post/index.xml" />
+
+
+
+
+
+<script data-goatcounter="https://arifrohman.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
+<div class="header-container">
+  <h1><a href="/">Arif's Homepage</a></h1>
+  <ul>
+    <li>
+      <a href="https://www.linkedin.com/in/rohmanhakim/">LinkedIn</a>
+    </li>
+    <li>
+      <a href="https://github.com/rohmanhakim/">GitHub</a>
+    </li>
+    <li>
+      <a href="/about">About</a>
+    </li>
+    <li>
+      <a href="/index.xml" title="RSS Feed">RSS</a>
+    </li>
+  </ul>
+  <button id="btn-switch-theme">Switch to dark Theme</button>
+</div>
+  </head>
+
+  <body>
+
+<div class="article-meta">
+  <h1><span class="title">Debugging a VS Code Extension Against Another Project (Without Losing Your Extensions)</span></h1>
+  
+</div>
+
+<main>
+  <article>
+    <p>When developing a VS Code extension, the normal workflow is straightforward enough: open your extension project, press <code>F5</code>, and VS Code launches a second window called the <strong>Extension Development Host</strong>. That second window runs your extension in a clean environment so you can debug it.</p>
+<p>The problem is that by default, it opens the extension project itself.</p>
+<p>That&rsquo;s not very useful if your extension is supposed to work on another project.</p>
+<p>My first thought was to simply open another folder after the Extension Development Host launched. That works, but I quickly ran into another problem: <strong>none of my installed extensions were available</strong>. Testing my extension in that environment wasn&rsquo;t representative of how it would actually be used.</p>
+<p>Fortunately, VS Code already has a clean solution for this.</p>
+<hr>
+<h2 id="step-1-create-a-dedicated-profile">Step 1: Create a dedicated profile</h2>
+<p>For example I only want to enable Go VS Code Extension.</p>
+<p>Create a new VS Code Profile from <strong>Empty Profile</strong>.</p>
+<p>Named it something like:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Go Dev
+</span></span></code></pre></div><p>Starting from an empty profile is intentional. I only wanted the extensions relevant for testing my extension.</p>
+<hr>
+<h2 id="step-2-point-the-extension-development-host-to-your-project">Step 2: Point the Extension Development Host to your project</h2>
+<p>Inside your extension project&rsquo;s <code>.vscode/launch.json</code>, update the launch arguments:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-json" data-lang="json"><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">&#34;type&#34;</span>: <span style="color:#e6db74">&#34;extensionHost&#34;</span>,
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">&#34;request&#34;</span>: <span style="color:#e6db74">&#34;launch&#34;</span>,
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">&#34;name&#34;</span>: <span style="color:#e6db74">&#34;Run Extension&#34;</span>,
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">&#34;args&#34;</span>: [
+</span></span><span style="display:flex;"><span>        <span style="color:#e6db74">&#34;/home/myuser/Projects/my-intended-repo-for-the-extension-debugging&#34;</span>,
+</span></span><span style="display:flex;"><span>        <span style="color:#e6db74">&#34;--profile&#34;</span>,
+</span></span><span style="display:flex;"><span>        <span style="color:#e6db74">&#34;Go Dev&#34;</span>
+</span></span><span style="display:flex;"><span>    ]
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>The first argument is the project you actually want to work on.</p>
+<p>The second tells VS Code which profile the Extension Development Host should use.</p>
+<hr>
+<h2 id="step-3-populate-the-profile">Step 3: Populate the profile</h2>
+<p>Launch a normal VS Code window.</p>
+<p>Switch to the <strong>Go Dev</strong> profile.</p>
+<p>Install only the extensions you want available while debugging. In my case, that was simply the Go extension.</p>
+<p>Close the window once you&rsquo;re done.</p>
+<p>You only need to do this once.</p>
+<hr>
+<h2 id="step-4-debug-normally">Step 4: Debug normally</h2>
+<p>Go back to your extension project.</p>
+<p>Press <code>F5</code>.</p>
+<p>Now the Extension Development Host launches:</p>
+<ul>
+<li>your target project instead of the extension source</li>
+<li>your extension under development</li>
+<li>only the extensions installed in the <strong>Go Dev</strong> profile</li>
+</ul>
+<p>Exactly what I wanted.</p>
+<p>Instead of maintaining a long list of command-line arguments, I can simply create one profile for each environment and switch between them by changing a single argument in <code>launch.json</code>.</p>
+<p>Each profile can also have its own extensions, settings, themes, keyboard shortcuts etc.</p>
+<p>making it easy to reproduce different user environments.</p>
+<hr>
+<h2 id="final-result">Final Result</h2>
+<p>My workflow now looks like this:</p>
+<p><strong>Instance 1:</strong></p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>VS Code #1
+</span></span><span style="display:flex;"><span>└── Extension source
+</span></span><span style="display:flex;"><span>    ├── Edit code
+</span></span><span style="display:flex;"><span>    ├── Set breakpoints
+</span></span><span style="display:flex;"><span>    └── Press F5
+</span></span></code></pre></div><p><strong>Instance 2:</strong></p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>VS Code #2 (Extension Development Host)
+</span></span><span style="display:flex;"><span>└── Target Go project
+</span></span><span style="display:flex;"><span>    ├── My extension (debug build)
+</span></span><span style="display:flex;"><span>    ├── Go extension
+</span></span><span style="display:flex;"><span>    └── Nothing else
+</span></span></code></pre></div><p>It&rsquo;s a small quality-of-life improvement, but if you&rsquo;re spending a lot of time developing VS Code extensions, it makes the debugging experience much closer to a real-world setup.</p>
+<hr>
+<h2 id="recap">Recap</h2>
+<ol>
+<li>Create an empty VS Code Profile.</li>
+<li>Install only the extensions you need into that profile.</li>
+<li>Add your target project path and <code>--profile &lt;profile-name&gt;</code> to <code>launch.json</code>.</li>
+<li>Debug your extension with <code>F5</code>.</li>
+</ol>
+<p>You&rsquo;ll get an Extension Development Host running against your actual project with exactly the extensions you want enabled.</p>
+<p>Thanks for reading!</p>
+
+  </article>
+  <nav id="mini-toc" aria-label="Table of contents">
+    
+  </nav>
+  <script>
+    (function () {
+      const toc = document.getElementById('mini-toc');
+      if (!toc) return;
+
+      
+      const headings = Array.from(
+        document.querySelectorAll('article h2, article h3')
+      );
+
+      if (headings.length === 0) return;
+
+      
+      headings.forEach((h) => {
+        
+        if (!h.id) {
+          h.id = h.textContent.trim()
+            .toLowerCase()
+            .replace(/[^\w\s-]/g, '')
+            .replace(/\s+/g, '-');
+        }
+
+        const a = document.createElement('a');
+        a.href = '#' + h.id;
+        a.textContent = h.textContent;
+        
+        if (h.tagName === 'H3') a.style.paddingLeft = '1rem';
+        toc.appendChild(a);
+      });
+
+      
+      const links = Array.from(toc.querySelectorAll('a'));
+
+      function onScroll() {
+        let current = headings[0];
+        for (const h of headings) {
+          if (h.getBoundingClientRect().top <= 120) {
+            current = h;
+          }
+        }
+        links.forEach((a) => {
+          a.classList.toggle('active', a.getAttribute('href') === '#' + current.id);
+        });
+      }
+
+      window.addEventListener('scroll', onScroll, { passive: true });
+      onScroll(); 
+    })();
+  </script>
+</main>
+
+<div class="comment">
+  <script src="https://utteranc.es/client.js" repo="rohmanhakim/rohmanhakim.github.io" issue-term="pathname"
+    theme="github-light" crossorigin="anonymous" async>
+    </script>
+</div>
+
+
+  <footer>
+  <script>
+  const btnSwitchTheme = document.getElementById("btn-switch-theme")
+
+  function getTheme() {
+    const cookies = Object.fromEntries(
+      document.cookie.split("; ").map(c => c.split("="))
+    );
+    return cookies.theme || "light";
+  }
+
+  function invertTheme(theme) {
+    return theme == "light" ? "dark" : "light"
+  }
+
+  function applyTheme(toTheme) {
+    btnSwitchTheme.textContent = "Switch to " + invertTheme(toTheme) + " theme"
+    document.querySelector("html").style = toTheme == "dark" ? "filter: invert(1);" : ""
+    neuralizeChildrenColor("img", toTheme)
+    neuralizeChildrenColor("button", toTheme)
+    neuralizeChildrenColor(".resume-download-button", toTheme)
+    neuralizeChildrenColor(".highlight", toTheme)
+  }
+
+  function neuralizeChildrenColor(child, toTheme) {
+    document.querySelectorAll(child).forEach(el => {
+      el.style = toTheme == "dark" ? "filter: invert(1);" : ""
+    })
+  }
+
+  btnSwitchTheme.addEventListener("click", (event) => {
+    const theme = getTheme()
+    const newTheme = invertTheme(theme)
+    document.cookie = "theme=" + newTheme + ";path=/"
+    applyTheme(newTheme)
+  })
+
+  applyTheme(getTheme())
+</script>
+<div class="footer-container">
+  <p>Copyright © 2026 <a href="/">Muhammad Arif Rohman Hakim</a></p>
+  <ul>
+    <li>
+      <a href="https://www.linkedin.com/in/rohmanhakim/">LinkedIn</a>
+    </li>
+    <li>
+      <a href="https://github.com/rohmanhakim/">GitHub</a>
+    </li>
+    <li>
+      <a href="/about">About</a>
+    </li>
+    <li>
+      <a href="/index.xml" title="RSS Feed">RSS</a>
+    </li>
+  </ul>
+</div>
+  
+  </footer>
+  </body>
+</html>

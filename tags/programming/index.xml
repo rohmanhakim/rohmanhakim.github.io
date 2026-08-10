@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Programming on Arif&#39;s Homepage</title>
+    <link>https://arifrohman.com/tags/programming/</link>
+    <description>Recent content in Programming on Arif&#39;s Homepage</description>
+    <generator>Hugo</generator>
+    <language>en-us</language>
+    <lastBuildDate>Thu, 04 Jun 2026 00:00:00 +0000</lastBuildDate>
+    <atom:link href="https://arifrohman.com/tags/programming/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Integer Digits Extraction in Go</title>
+      <link>https://arifrohman.com/post/integer-digits-extraction-in-go/</link>
+      <pubDate>Thu, 04 Jun 2026 00:00:00 +0000</pubDate>
+      <guid>https://arifrohman.com/post/integer-digits-extraction-in-go/</guid>
+      <description>A post exploring different approach of digits extraction in GO.</description>
+    </item>
+    <item>
+      <title>Implementing Any-In Prioritized-Out Data Type using Heap in Go</title>
+      <link>https://arifrohman.com/post/implementing-any-in-prioritized-out-data-type-using-heap-in-go/</link>
+      <pubDate>Mon, 01 Jun 2026 00:00:00 +0000</pubDate>
+      <guid>https://arifrohman.com/post/implementing-any-in-prioritized-out-data-type-using-heap-in-go/</guid>
+      <description>Explore how to design an any-in prioritized-out data structure using priority queue and heap in go.</description>
+    </item>
+    <item>
+      <title>Storing States as Bitmasks</title>
+      <link>https://arifrohman.com/post/storing-states-as-bitmasks/</link>
+      <pubDate>Mon, 25 May 2026 00:00:00 +0000</pubDate>
+      <guid>https://arifrohman.com/post/storing-states-as-bitmasks/</guid>
+      <description>A post describing a technique to store states of collection of data inside an integer.</description>
+    </item>
+  </channel>
+</rss>

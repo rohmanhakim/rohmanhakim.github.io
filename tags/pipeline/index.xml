@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Pipeline on Arif&#39;s Homepage</title>
+    <link>https://arifrohman.com/tags/pipeline/</link>
+    <description>Recent content in Pipeline on Arif&#39;s Homepage</description>
+    <generator>Hugo</generator>
+    <language>en-us</language>
+    <lastBuildDate>Fri, 27 Feb 2026 00:00:00 +0000</lastBuildDate>
+    <atom:link href="https://arifrohman.com/tags/pipeline/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Designing a Retry Handler in Go for Reliable Pipelines</title>
+      <link>https://arifrohman.com/engineering-note/designing-a-retry-handler-in-go-for-reliable-pipelines/</link>
+      <pubDate>Fri, 27 Feb 2026 00:00:00 +0000</pubDate>
+      <guid>https://arifrohman.com/engineering-note/designing-a-retry-handler-in-go-for-reliable-pipelines/</guid>
+      <description>Designs a production-grade retry handler in Go for concurrent pipeline systems, covering error classification (auto/manual/never retry), exponential backoff with jitter to prevent thundering herds, context-aware cancellation, observability hooks, result struct vs. multi-value returns, and a generic type-safe API to make retry logic reusable across different pipeline stages</description>
+    </item>
+  </channel>
+</rss>

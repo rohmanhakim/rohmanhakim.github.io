@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Posts on Arif&#39;s Homepage</title>
+    <link>https://arifrohman.com/post/</link>
+    <description>Recent content in Posts on Arif&#39;s Homepage</description>
+    <generator>Hugo</generator>
+    <language>en-us</language>
+    <lastBuildDate>Mon, 10 Aug 2026 00:00:00 +0000</lastBuildDate>
+    <atom:link href="https://arifrohman.com/post/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Running Worms W.M.D Natively on PikaOS Linux</title>
+      <link>https://arifrohman.com/post/running-worms-w.m.d-natively-on-pikaos-linux/</link>
+      <pubDate>Mon, 10 Aug 2026 00:00:00 +0000</pubDate>
+      <guid>https://arifrohman.com/post/running-worms-w.m.d-natively-on-pikaos-linux/</guid>
+      <description>How I got the native Linux build of Worms W.M.D running on Debian-based Linux using Steam Runtime libraries and a launch wrapper.</description>
+    </item>
+    <item>
+      <title>Debugging a VS Code Extension Against Another Project (Without Losing Your Extensions)</title>
+      <link>https://arifrohman.com/post/debugging-a-vs-code-extension-against-another-project-without-losing-your-extensions/</link>
+      <pubDate>Fri, 07 Aug 2026 00:00:00 +0000</pubDate>
+      <guid>https://arifrohman.com/post/debugging-a-vs-code-extension-against-another-project-without-losing-your-extensions/</guid>
+      <description>Learn how to debug a VS Code extension against a real project while keeping only the extensions you want available in the Extension Development Host.</description>
+    </item>
+    <item>
+      <title>Fixing PATH issue in VS Code Terminal</title>
+      <link>https://arifrohman.com/post/fixing-path-issue-in-vscode-terminal/</link>
+      <pubDate>Thu, 06 Aug 2026 00:00:00 +0000</pubDate>
+      <guid>https://arifrohman.com/post/fixing-path-issue-in-vscode-terminal/</guid>
+      <description>Quick fix for when a CLI tool works in your regular terminal but fails with &amp;lsquo;command not found&amp;rsquo; in VS Code&amp;rsquo;s integrated terminal. The issue is bash&amp;rsquo;s early return for non-interactive shells, and the fix is moving PATH exports before that return.</description>
+    </item>
+    <item>
+      <title>Setting Up GitHub MCP Server in Cline</title>
+      <link>https://arifrohman.com/post/setting-up-github-mcp-server-in-cline/</link>
+      <pubDate>Mon, 03 Aug 2026 00:00:00 +0000</pubDate>
+      <guid>https://arifrohman.com/post/setting-up-github-mcp-server-in-cline/</guid>
+      <description>Step-by-step guide to setting up the GitHub MCP server in Cline, giving your AI coding agent direct access to read and analyze GitHub repositories.</description>
+    </item>
+    <item>
+      <title>Go&#39;s Delve Suddenly Print `Building .`</title>
+      <link>https://arifrohman.com/post/gos-delve-suddenly-print-building-./</link>
+      <pubDate>Thu, 09 Jul 2026 00:00:00 +0000</pubDate>
+      <guid>https://arifrohman.com/post/gos-delve-suddenly-print-building-./</guid>
+      <description>A short note on why VS Code&amp;rsquo;s Go debugger started printing &amp;lsquo;Building .&amp;rsquo; after upgrading to Delve 1.27.0, and whether it can be disabled.</description>
+    </item>
+    <item>
+      <title>Integer Digits Extraction in Go</title>
+      <link>https://arifrohman.com/post/integer-digits-extraction-in-go/</link>
+      <pubDate>Thu, 04 Jun 2026 00:00:00 +0000</pubDate>
+      <guid>https://arifrohman.com/post/integer-digits-extraction-in-go/</guid>
+      <description>A post exploring different approach of digits extraction in GO.</description>
+    </item>
+    <item>
+      <title>Implementing Any-In Prioritized-Out Data Type using Heap in Go</title>
+      <link>https://arifrohman.com/post/implementing-any-in-prioritized-out-data-type-using-heap-in-go/</link>
+      <pubDate>Mon, 01 Jun 2026 00:00:00 +0000</pubDate>
+      <guid>https://arifrohman.com/post/implementing-any-in-prioritized-out-data-type-using-heap-in-go/</guid>
+      <description>Explore how to design an any-in prioritized-out data structure using priority queue and heap in go.</description>
+    </item>
+    <item>
+      <title>Storing States as Bitmasks</title>
+      <link>https://arifrohman.com/post/storing-states-as-bitmasks/</link>
+      <pubDate>Mon, 25 May 2026 00:00:00 +0000</pubDate>
+      <guid>https://arifrohman.com/post/storing-states-as-bitmasks/</guid>
+      <description>A post describing a technique to store states of collection of data inside an integer.</description>
+    </item>
+    <item>
+      <title>Running Agentic Coding for Free: My OpenRouter &#43; Cline Setup</title>
+      <link>https://arifrohman.com/post/running-agentic-coding-for-free-my-openrouter-plus-cline-setup/</link>
+      <pubDate>Sat, 03 Jan 2026 00:00:00 +0000</pubDate>
+      <guid>https://arifrohman.com/post/running-agentic-coding-for-free-my-openrouter-plus-cline-setup/</guid>
+      <description>Step-by-step guide to setting up free agentic coding in VS Code using OpenRouter and Cline with the free stepfun/step-3.5-flash model from StepFun. Covers account creation, API key setup, billing configuration, model selection, Plan vs Act workflow, context management, .clinerules, token usage monitoring, and comparisons with models from OpenAI, Google, Anthropic, Moonshot AI, and MiniMax. Ideal for developers who want a zero-cost, practical introduction to autonomous AI coding workflows.</description>
+    </item>
+    <item>
+      <title>Simple Javascript Theme Switcher Using Cookie</title>
+      <link>https://arifrohman.com/post/simple-javascript-theme-switcher-using-cookie/</link>
+      <pubDate>Wed, 27 Aug 2025 00:00:00 +0000</pubDate>
+      <guid>https://arifrohman.com/post/simple-javascript-theme-switcher-using-cookie/</guid>
+      <description>Learn how to implement a simple dark/light theme switcher for your website using JavaScript and cookies, leveraging the CSS invert filter for quick theme toggling.</description>
+    </item>
+  </channel>
+</rss>

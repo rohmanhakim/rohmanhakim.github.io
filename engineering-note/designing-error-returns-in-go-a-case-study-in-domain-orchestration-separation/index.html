@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Designing Error Returns in Go: A Case Study in Domain-Orchestration Separation | Arif&#39;s Homepage</title>
+    <link rel="stylesheet" href="/css/style.css" />
+    <link rel="stylesheet" href="/css/fonts.css" />
+    
+  
+    <meta name="description" content="Learn to design error-returning functions in Go that distinguish domain logic from orchestration, and discover why a custom RepairableResult type is preferable to (bool, error) for building observable and testable validation logic. " />
+  
+  <link rel="stylesheet" href="/css/mini-toc.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Source+Sans+3:ital,wght@0,200..900;1,200..900&display=swap" rel="stylesheet">
+  
+
+<link rel="stylesheet" href="/css/custom.css">
+<link rel="stylesheet" href="/css/yahoo.css">
+
+
+<link rel="alternate" type="application/rss+xml" title="Arif&#39;s Homepage - RSS Feed" href="https://arifrohman.com/index.xml" />
+
+
+<link rel="alternate" type="application/rss+xml" title="Arif&#39;s Homepage - Engineering Notes RSS Feed" href="https://arifrohman.com/engineering-note/index.xml" />
+
+
+
+
+<script data-goatcounter="https://arifrohman.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
+<div class="header-container">
+  <h1><a href="/">Arif's Homepage</a></h1>
+  <ul>
+    <li>
+      <a href="https://www.linkedin.com/in/rohmanhakim/">LinkedIn</a>
+    </li>
+    <li>
+      <a href="https://github.com/rohmanhakim/">GitHub</a>
+    </li>
+    <li>
+      <a href="/about">About</a>
+    </li>
+    <li>
+      <a href="/index.xml" title="RSS Feed">RSS</a>
+    </li>
+  </ul>
+  <button id="btn-switch-theme">Switch to dark Theme</button>
+</div>
+  </head>
+
+  <body>
+
+<div class="article-meta">
+  <h1><span class="title">Designing Error Returns in Go: A Case Study in Domain-Orchestration Separation</span></h1>
+  
+</div>
+
+<main>
+  <article>
+    <p>I recently refactored a Go codebase where I had a checking function <code>isRepairable()</code> that returns a boolean. Inside, it has several sequential checks with an early return pattern to validate against business rules:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#66d9ef">func</span> <span style="color:#a6e22e">isRepairable</span>(<span style="color:#a6e22e">doc</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">html</span>.<span style="color:#a6e22e">Node</span>) <span style="color:#66d9ef">bool</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// Check 1: Competing roots</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> <span style="color:#a6e22e">hasCompetingDocumentRoots</span>(<span style="color:#a6e22e">docQuery</span>) {
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> <span style="color:#66d9ef">false</span>  
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// Check 2: No structural anchors</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> len(<span style="color:#a6e22e">headings</span>) <span style="color:#f92672">==</span> <span style="color:#ae81ff">0</span> <span style="color:#f92672">&amp;&amp;</span> !<span style="color:#a6e22e">hasStructuralAnchors</span>(<span style="color:#a6e22e">docQuery</span>) {
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> <span style="color:#66d9ef">false</span>
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// ... more checks ...</span>
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// All checks passed - document is repairable</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#66d9ef">true</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>The caller checks the returned bool and returns an error if it&rsquo;s false:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#a6e22e">repairable</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">isRepairable</span>(<span style="color:#a6e22e">doc</span>)
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">if</span> !<span style="color:#a6e22e">repairable</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">SanitizedDoc</span>{}, <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">SanitizationError</span>{
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">Cause</span>: <span style="color:#a6e22e">ErrCauseStructurallyIncorrect</span>,
+</span></span><span style="display:flex;"><span>        <span style="color:#f92672">...</span>
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>The problem is every check always returns <code>ErrCauseStructurallyIncorrect</code>. It&rsquo;s not wrong, it&rsquo;s just very limiting. I wanted to make the error more granular for logging purposes, so the logging would be richer as I passed more context about the actual cause.</p>
+<h2 id="the-observability-requirement">The Observability Requirement</h2>
+<p>At the highest level of the sanitization pipeline, there is observability logging:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#66d9ef">func</span> (<span style="color:#a6e22e">s</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">Sanitizer</span>) <span style="color:#a6e22e">Sanitize</span>(
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">inputDoc</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">html</span>.<span style="color:#a6e22e">Node</span>,
+</span></span><span style="display:flex;"><span>) (<span style="color:#a6e22e">SanitizedDoc</span>, <span style="color:#a6e22e">failure</span>.<span style="color:#a6e22e">ClassifiedError</span>) {
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">sanitizedDoc</span>, <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">sanitize</span>(<span style="color:#a6e22e">inputDoc</span>)
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> <span style="color:#a6e22e">err</span> <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nil</span> {
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">var</span> <span style="color:#a6e22e">sanitizationError</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">SanitizationError</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">errors</span>.<span style="color:#a6e22e">As</span>(<span style="color:#a6e22e">err</span>, <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">sanitizationError</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#75715e">// Build contextual attributes based on the error cause</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">attrs</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">buildErrorAttributes</span>(<span style="color:#a6e22e">sanitizationError</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">s</span>.<span style="color:#a6e22e">metadataRecorder</span>.<span style="color:#a6e22e">RecordError</span>(
+</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">time</span>.<span style="color:#a6e22e">Now</span>(),
+</span></span><span style="display:flex;"><span>            <span style="color:#e6db74">&#34;sanitizer&#34;</span>,
+</span></span><span style="display:flex;"><span>            <span style="color:#e6db74">&#34;Sanitizer.Sanitize&#34;</span>,
+</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">mapSanitizationErrorToMetadataCause</span>(<span style="color:#f92672">*</span><span style="color:#a6e22e">sanitizationError</span>),
+</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">err</span>.<span style="color:#a6e22e">Error</span>(),
+</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">attrs</span>,
+</span></span><span style="display:flex;"><span>        )
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">SanitizedDoc</span>{}, <span style="color:#a6e22e">sanitizationError</span>
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">sanitizedDoc</span>, <span style="color:#66d9ef">nil</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>The <code>sanitize()</code> function calls <code>isRepairable</code> and uses its result to gatekeep the downstream sanitization process. I need granular error causes because <code>RecordError()</code> uses these to build metrics, alerts, and debugging context. This requirement constrained the design.</p>
+<h2 id="design-alternatives-considered">Design Alternatives Considered</h2>
+<p>There are several common patterns in Go for this type of function. Let me walk through what I considered and why I made the choices I did.</p>
+<h3 id="option-1-return-bool-error">Option 1: Return <code>(bool, error)</code></h3>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#66d9ef">func</span> <span style="color:#a6e22e">isRepairable</span>(<span style="color:#a6e22e">doc</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">html</span>.<span style="color:#a6e22e">Node</span>) (<span style="color:#66d9ef">bool</span>, <span style="color:#66d9ef">error</span>) {
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// Check 1: Competing roots</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> <span style="color:#a6e22e">hasCompetingDocumentRoots</span>(<span style="color:#a6e22e">doc</span>) {
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> <span style="color:#66d9ef">false</span>, <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">SanitizationError</span>{
+</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">Cause</span>: <span style="color:#a6e22e">ErrCauseCompetingRoots</span>,
+</span></span><span style="display:flex;"><span>            <span style="color:#f92672">...</span>
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// Check 2: No structural anchors</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> len(<span style="color:#a6e22e">headings</span>) <span style="color:#f92672">==</span> <span style="color:#ae81ff">0</span> <span style="color:#f92672">&amp;&amp;</span> !<span style="color:#a6e22e">hasStructuralAnchors</span>(<span style="color:#a6e22e">doc</span>) {
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> <span style="color:#66d9ef">false</span>, <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">SanitizationError</span>{
+</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">Cause</span>: <span style="color:#a6e22e">ErrCauseNoStructuralAnchor</span>,
+</span></span><span style="display:flex;"><span>            <span style="color:#f92672">...</span>
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// ... more checks ...</span>
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// All checks passed - document is repairable</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#66d9ef">true</span>, <span style="color:#66d9ef">nil</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>You might ask:</p>
+<blockquote>
+<p>&ldquo;What&rsquo;s the purpose of the bool if you can just infer it from whether error is nil?&rdquo;</p>
+</blockquote>
+<p><strong>Short answer:</strong> In <code>(bool, error)</code>, the bool represents the domain truth of the predicate, while the error represents failure to evaluate or exceptional cause. They answer two different questions:</p>
+<ul>
+<li><code>bool</code> -&gt; &ldquo;Is the condition true?&rdquo;</li>
+<li><code>error</code> -&gt; &ldquo;Was the check itself successful?&rdquo;</li>
+</ul>
+<p>This separation is intentional in Go API design.</p>
+<p><strong>Long answer:</strong> A checker with <code>(bool, error)</code> distinguishes:</p>
+<table>
+  <thead>
+      <tr>
+          <th>Axis</th>
+          <th>Meaning</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>Evaluation succeeded?</td>
+          <td><code>err == nil</code></td>
+      </tr>
+      <tr>
+          <td>Predicate is true?</td>
+          <td><code>bool == true</code></td>
+      </tr>
+  </tbody>
+</table>
+<p>That gives three meaningful states:</p>
+<table>
+  <thead>
+      <tr>
+          <th>bool</th>
+          <th>error</th>
+          <th>Meaning</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>true</td>
+          <td>nil</td>
+          <td>condition holds</td>
+      </tr>
+      <tr>
+          <td>false</td>
+          <td>nil</td>
+          <td>condition does not hold (normal case)</td>
+      </tr>
+      <tr>
+          <td>false</td>
+          <td>non-nil</td>
+          <td>check could not be completed</td>
+      </tr>
+  </tbody>
+</table>
+<p>This is impossible to encode with just error unless you overload error to also mean &ldquo;false,&rdquo; which is often semantically wrong.</p>
+<h4 id="when-bool-error-is-genuinely-useful">When <code>(bool, error)</code> is genuinely useful:</h4>
+<p><strong>1. False is a normal, non-error outcome</strong></p>
+<p>Example: authorization check with infrastructure dependency.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#66d9ef">func</span> <span style="color:#a6e22e">IsAllowed</span>(<span style="color:#a6e22e">user</span> <span style="color:#a6e22e">User</span>, <span style="color:#a6e22e">resource</span> <span style="color:#66d9ef">string</span>) (<span style="color:#66d9ef">bool</span>, <span style="color:#66d9ef">error</span>)
+</span></span></code></pre></div><ul>
+<li>User not allowed -&gt; <code>(false, nil)</code> -&gt; normal business result</li>
+<li>Policy service unreachable -&gt; <code>(false, err)</code> -&gt; operational failure</li>
+</ul>
+<p>Caller:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#a6e22e">ok</span>, <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">IsAllowed</span>(<span style="color:#a6e22e">u</span>, <span style="color:#a6e22e">r</span>)
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">if</span> <span style="color:#a6e22e">err</span> <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nil</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">err</span> <span style="color:#75715e">// system problem</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">if</span> !<span style="color:#a6e22e">ok</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">ErrForbidden</span> <span style="color:#75715e">// domain result</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>Without the bool, you&rsquo;d be forced to treat &ldquo;not allowed&rdquo; as an error, which pollutes error semantics.</p>
+<p><strong>2. To avoid using errors for control flow</strong></p>
+<p>Go style discourages using errors to represent expected boolean outcomes. In Go, <code>error</code> is intended to signal abnormal or exceptional conditions, not ordinary branch outcomes. Using errors to encode expected boolean results conflates two semantic layers and degrades API clarity, performance, and composability.</p>
+<p>Bad design:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#66d9ef">func</span> <span style="color:#a6e22e">CheckQuota</span>(<span style="color:#a6e22e">u</span> <span style="color:#a6e22e">User</span>) <span style="color:#66d9ef">error</span>
+</span></span></code></pre></div><p>Where:</p>
+<ul>
+<li><code>nil</code> = allowed</li>
+<li><code>ErrQuotaExceeded</code> = false</li>
+</ul>
+<p>This is acceptable for validation, but not ideal if <code>false</code> is a frequent, expected branch in normal flow. Then <code>(bool, error)</code> is clearer.</p>
+<h3 id="option-2-return-only-error">Option 2: Return only <code>error</code></h3>
+<p>When false is the frequent case, it&rsquo;s good to omit the bool and return only <code>error</code>. If it&rsquo;s <code>nil</code>, the check passes.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#66d9ef">func</span> <span style="color:#a6e22e">validateRepairability</span>(<span style="color:#a6e22e">doc</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">html</span>.<span style="color:#a6e22e">Node</span>) <span style="color:#66d9ef">error</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// Check 1: Competing roots</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> <span style="color:#a6e22e">hasCompetingDocumentRoots</span>(<span style="color:#a6e22e">doc</span>) {
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">SanitizationError</span>{
+</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">Cause</span>: <span style="color:#a6e22e">ErrCauseCompetingRoots</span>,
+</span></span><span style="display:flex;"><span>            <span style="color:#f92672">...</span>
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// Check 2: No structural anchors</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> len(<span style="color:#a6e22e">headings</span>) <span style="color:#f92672">==</span> <span style="color:#ae81ff">0</span> <span style="color:#f92672">&amp;&amp;</span> !<span style="color:#a6e22e">hasStructuralAnchors</span>(<span style="color:#a6e22e">doc</span>) {
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">SanitizationError</span>{
+</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">Cause</span>: <span style="color:#a6e22e">ErrCauseNoStructuralAnchor</span>,
+</span></span><span style="display:flex;"><span>            <span style="color:#f92672">...</span>
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// ... more checks ...</span>
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// All checks passed - document is repairable</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#66d9ef">nil</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>Caller:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">validateRepairability</span>(<span style="color:#a6e22e">doc</span>)
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">if</span> <span style="color:#a6e22e">err</span> <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nil</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">err</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>This is preferred when:</p>
+<ul>
+<li>Failure reasons matter more than true/false</li>
+<li>Check is gatekeeping</li>
+<li>Pattern matches <code>ValidateX</code>, <code>CheckX</code>, <code>EnsureX</code></li>
+</ul>
+<p>This is often more idiomatic than <code>(bool, error)</code> for validation/guard-style checks.</p>
+<h2 id="why-i-chose-neither">Why I Chose Neither</h2>
+<h3 id="reason-1-no-false-nil-state-exists-in-my-domain">Reason 1: No <code>(false, nil)</code> state exists in my domain</h3>
+<p>In the <code>(bool, error)</code> pattern, there&rsquo;s this possibility:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span>(<span style="color:#66d9ef">false</span>, <span style="color:#66d9ef">nil</span>) <span style="color:#f92672">-</span>&gt; <span style="color:#a6e22e">normal</span> <span style="color:#a6e22e">business</span> <span style="color:#a6e22e">result</span>
+</span></span></code></pre></div><p>This doesn&rsquo;t suit my case. I need the caller to be able to access the structured cause. I want the caller to know the cause of the business rule violation because the purpose is to enrich the logging at the topmost level. This branch of business flow won&rsquo;t happen. The cause when the document cannot be repaired must be known and enforced, as no operational error will happen downstream that would prevent me from determining <em>why</em> it&rsquo;s unrepairable.</p>
+<h3 id="reason-2-i-want-to-keep-domain-logic-separate-from-error-infrastructure">Reason 2: I want to keep domain logic separate from error infrastructure</h3>
+<p>The &ldquo;return error&rdquo; pattern was close to being chosen: <code>isRepairable</code> is a gatekeeper (in essence, a validator) and no further flow would be executed if it fails.</p>
+<p>Had I chosen the &ldquo;return error&rdquo; pattern, <code>isRepairable</code> (or <code>validateRepairability</code>, in this case) would look like this:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#66d9ef">func</span> <span style="color:#a6e22e">validateRepairability</span>(<span style="color:#a6e22e">doc</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">html</span>.<span style="color:#a6e22e">Node</span>) <span style="color:#66d9ef">error</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// Check 1: Competing roots</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> <span style="color:#a6e22e">hasCompetingDocumentRoots</span>(<span style="color:#a6e22e">doc</span>) {
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">SanitizationError</span>{
+</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">Cause</span>: <span style="color:#a6e22e">ErrCauseCompetingRoots</span>,
+</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">Message</span>: <span style="color:#e6db74">&#34;competing document roots found&#34;</span>,
+</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">Retryable</span>: <span style="color:#66d9ef">false</span>,
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// Check 2: No structural anchors</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> len(<span style="color:#a6e22e">headings</span>) <span style="color:#f92672">==</span> <span style="color:#ae81ff">0</span> <span style="color:#f92672">&amp;&amp;</span> !<span style="color:#a6e22e">hasStructuralAnchors</span>(<span style="color:#a6e22e">doc</span>) {
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">SanitizationError</span>{
+</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">Cause</span>: <span style="color:#a6e22e">ErrCauseNoStructuralAnchor</span>,
+</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">Message</span>: <span style="color:#e6db74">&#34;no structural anchors found&#34;</span>,
+</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">Retryable</span>: <span style="color:#66d9ef">false</span>,
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// ... more checks ...</span>
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#66d9ef">nil</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>It becomes polluted by high-level (sanitization, in this case) errors. <code>validateRepairability</code> would be exposed to any other sanitization errors not related to repairing. If you look at my <code>SanitizationError</code>:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#66d9ef">type</span> <span style="color:#a6e22e">SanitizationError</span> <span style="color:#66d9ef">struct</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">Message</span>   <span style="color:#66d9ef">string</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">Retryable</span> <span style="color:#66d9ef">bool</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">Cause</span>     <span style="color:#a6e22e">SanitizationErrorCause</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>It&rsquo;s an orchestration-level concern. The <code>Retryable</code> flag, the <code>Message</code> formatting, these are decisions made at the boundary between the sanitization pipeline and the rest of the system, not decisions inherent to the question &ldquo;is this document repairable?&rdquo;</p>
+<p>More importantly, if I later need to check repairability in a different context, say, a CLI tool that validates document files, or a completely different service, I&rsquo;d have to drag <code>SanitizationError</code> along with it. The domain logic would be coupled to infrastructure concerns.</p>
+<h2 id="the-solution-domain-specific-result-type">The Solution: Domain-Specific Result Type</h2>
+<p>I introduced a repairing-specific struct to wrap the predicate and the reason:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#75715e">// RepairableResult contains the outcome of the repairability check.</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">// If Repairable is false, Reason contains the specific violation type.</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">type</span> <span style="color:#a6e22e">RepairableResult</span> <span style="color:#66d9ef">struct</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">Repairable</span> <span style="color:#66d9ef">bool</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">Reason</span>     <span style="color:#a6e22e">UnrepairabilityReason</span> <span style="color:#75715e">// empty when Repairable is true</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>And the reason enums:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#66d9ef">type</span> <span style="color:#a6e22e">UnrepairabilityReason</span> <span style="color:#66d9ef">string</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">const</span> (
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// ReasonCompetingRoots: Multiple article/main elements at same level (S3 invariant violation)</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">ReasonCompetingRoots</span> <span style="color:#a6e22e">UnrepairabilityReason</span> = <span style="color:#e6db74">&#34;competing_roots&#34;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// ReasonNoStructuralAnchor: No headings and no structural anchors like article/main (H3 invariant violation)</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">ReasonNoStructuralAnchor</span> <span style="color:#a6e22e">UnrepairabilityReason</span> = <span style="color:#e6db74">&#34;no_structural_anchor&#34;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// ... more reason enums ...</span>
+</span></span><span style="display:flex;"><span>)
+</span></span></code></pre></div><p>The function now looks like this:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#66d9ef">func</span> <span style="color:#a6e22e">isRepairable</span>(<span style="color:#a6e22e">doc</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">html</span>.<span style="color:#a6e22e">Node</span>) <span style="color:#a6e22e">RepairableResult</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// Check 1: Competing roots</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> <span style="color:#a6e22e">hasCompetingDocumentRoots</span>(<span style="color:#a6e22e">docQuery</span>) {
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">RepairableResult</span>{<span style="color:#a6e22e">Repairable</span>: <span style="color:#66d9ef">false</span>, <span style="color:#a6e22e">Reason</span>: <span style="color:#a6e22e">ReasonCompetingRoots</span>}
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// Check 2: No structural anchors</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> len(<span style="color:#a6e22e">headings</span>) <span style="color:#f92672">==</span> <span style="color:#ae81ff">0</span> <span style="color:#f92672">&amp;&amp;</span> !<span style="color:#a6e22e">hasStructuralAnchors</span>(<span style="color:#a6e22e">docQuery</span>) {
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">RepairableResult</span>{<span style="color:#a6e22e">Repairable</span>: <span style="color:#66d9ef">false</span>, <span style="color:#a6e22e">Reason</span>: <span style="color:#a6e22e">ReasonNoStructuralAnchor</span>}
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// ... more checks ...</span>
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// All checks passed - document is repairable</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">RepairableResult</span>{<span style="color:#a6e22e">Repairable</span>: <span style="color:#66d9ef">true</span>, <span style="color:#a6e22e">Reason</span>: <span style="color:#e6db74">&#34;&#34;</span>}
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>Then I created a mapper function to translate domain reasons to orchestration-level error causes:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#75715e">// mapReasonToErrorCause maps UnrepairabilityReason to SanitizationErrorCause.</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">// This translation occurs at the sanitize() level to keep isRepairable() independent</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">// of error cause types.</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">func</span> <span style="color:#a6e22e">mapReasonToErrorCause</span>(<span style="color:#a6e22e">reason</span> <span style="color:#a6e22e">UnrepairabilityReason</span>) <span style="color:#a6e22e">SanitizationErrorCause</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">switch</span> <span style="color:#a6e22e">reason</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">case</span> <span style="color:#a6e22e">ReasonCompetingRoots</span>:
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">ErrCauseCompetingRoots</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">case</span> <span style="color:#a6e22e">ReasonNoStructuralAnchor</span>:
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">ErrCauseNoStructuralAnchor</span>
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// ... more mappings ...</span>
+</span></span><span style="display:flex;"><span>    
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">default</span>:
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> <span style="color:#e6db74">&#34;&#34;</span>
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>The caller becomes:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#75715e">// ...</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">if</span> !<span style="color:#a6e22e">isParseable</span>(<span style="color:#a6e22e">doc</span>) {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">SanitizedDoc</span>{}, <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">SanitizationError</span>{
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">Message</span>:   <span style="color:#e6db74">&#34;input document cannot be parsed: nil node or no content&#34;</span>,
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">Retryable</span>: <span style="color:#66d9ef">false</span>,
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">Cause</span>:     <span style="color:#a6e22e">ErrCauseUnparseableDoc</span>,
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">result</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">isRepairable</span>(<span style="color:#a6e22e">doc</span>)
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">if</span> !<span style="color:#a6e22e">result</span>.<span style="color:#a6e22e">Repairable</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">cause</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">mapReasonToErrorCause</span>(<span style="color:#a6e22e">result</span>.<span style="color:#a6e22e">Reason</span>)
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">SanitizedDoc</span>{}, <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">SanitizationError</span>{
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">Message</span>:   <span style="color:#a6e22e">fmt</span>.<span style="color:#a6e22e">Sprintf</span>(<span style="color:#e6db74">&#34;document is not repairable: %s&#34;</span>, <span style="color:#a6e22e">result</span>.<span style="color:#a6e22e">Reason</span>),
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">Retryable</span>: <span style="color:#66d9ef">false</span>,
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">Cause</span>:     <span style="color:#a6e22e">cause</span>,
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">// ...</span>
+</span></span></code></pre></div><h2 id="why-this-design-works">Why This Design Works</h2>
+<h3 id="1-clear-separation-of-concerns">1. Clear Separation of Concerns</h3>
+<p><code>isRepairable()</code> answers a pure domain question: &ldquo;Can this document be repaired?&rdquo; It knows nothing about:</p>
+<ul>
+<li>How errors are structured in the sanitization pipeline</li>
+<li>Whether failures are retryable</li>
+<li>How messages should be formatted</li>
+<li>What observability system I&rsquo;m using</li>
+</ul>
+<p>This means I can:</p>
+<ul>
+<li>Test <code>isRepairable()</code> without mocking <code>SanitizationError</code></li>
+<li>Reuse it in other contexts (CLI tools, different services)</li>
+<li>Change error handling without touching domain logic</li>
+</ul>
+<h3 id="2-explicit-translation-layer">2. Explicit Translation Layer</h3>
+<p>The <code>mapReasonToErrorCause()</code> function is intentional indirection. It enforces that domain reasons and error causes evolve independently. If someone adds a new <code>UnrepairabilityReason</code>, the compiler forces them to update the mapper. This prevents the common bug where you add a new failure case but forget to handle it in error logging.</p>
+<h3 id="3-type-safety-and-self-documentation">3. Type Safety and Self-Documentation</h3>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#a6e22e">result</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">isRepairable</span>(<span style="color:#a6e22e">doc</span>)
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">if</span> !<span style="color:#a6e22e">result</span>.<span style="color:#a6e22e">Repairable</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// result.Reason is available here, can&#39;t be forgotten</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">cause</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">mapReasonToErrorCause</span>(<span style="color:#a6e22e">result</span>.<span style="color:#a6e22e">Reason</span>)
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// ...</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>You can&rsquo;t forget to check the reason: it&rsquo;s right there in the struct. Compare this to returning just a boolean, where the caller has to &ldquo;remember&rdquo; what might have gone wrong.</p>
+<h3 id="4-observability-friendly">4. Observability-Friendly</h3>
+<p>Because I translate <code>UnrepairabilityReason</code> to <code>SanitizationErrorCause</code> at the orchestration boundary, the observability layer gets structured, queryable data:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#a6e22e">h</span>.<span style="color:#a6e22e">metadataRecorder</span>.<span style="color:#a6e22e">RecordError</span>(
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">time</span>.<span style="color:#a6e22e">Now</span>(),
+</span></span><span style="display:flex;"><span>    <span style="color:#e6db74">&#34;sanitizer&#34;</span>,
+</span></span><span style="display:flex;"><span>    <span style="color:#e6db74">&#34;Sanitizer.Sanitize&#34;</span>,
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">mapSanitizationErrorToMetadataCause</span>(<span style="color:#f92672">*</span><span style="color:#a6e22e">sanitizationError</span>), <span style="color:#75715e">// &lt;- Uses structured Cause</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">err</span>.<span style="color:#a6e22e">Error</span>(),
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">attrs</span>, <span style="color:#75715e">// &lt;- buildErrorAttributes can branch on Cause for rich context</span>
+</span></span><span style="display:flex;"><span>)
+</span></span></code></pre></div><p>If all failures were just <code>ErrCauseStructurallyIncorrect</code>, I&rsquo;d lose the ability to:</p>
+<ul>
+<li>Build dashboards showing which validation rules fail most often</li>
+<li>Set different alert thresholds for different failure types</li>
+<li>Debug production issues by filtering logs by specific causes</li>
+</ul>
+<h2 id="addressing-potential-concerns">Addressing Potential Concerns</h2>
+<h3 id="isnt-the-boolean-in-repairableresult-redundant">&ldquo;Isn&rsquo;t the boolean in RepairableResult redundant?&rdquo;</h3>
+<p>Technically, yes. You could infer it from <code>Reason == &quot;&quot;</code>. But keeping it explicit has ergonomic value:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#66d9ef">if</span> !<span style="color:#a6e22e">result</span>.<span style="color:#a6e22e">Repairable</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// immediately clear what&#39;s happening</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>versus:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#66d9ef">if</span> <span style="color:#a6e22e">result</span>.<span style="color:#a6e22e">Reason</span> <span style="color:#f92672">!=</span> <span style="color:#e6db74">&#34;&#34;</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// requires knowing the convention</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>The redundancy is a feature, not a bug. It makes the code read more naturally.</p>
+<h3 id="why-not-just-use-sentinel-errors">&ldquo;Why not just use sentinel errors?&rdquo;</h3>
+<p>You could define:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#66d9ef">var</span> (
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">ErrCompetingRoots</span> = <span style="color:#a6e22e">errors</span>.<span style="color:#a6e22e">New</span>(<span style="color:#e6db74">&#34;competing_roots&#34;</span>)
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">ErrNoStructuralAnchor</span> = <span style="color:#a6e22e">errors</span>.<span style="color:#a6e22e">New</span>(<span style="color:#e6db74">&#34;no_structural_anchor&#34;</span>)
+</span></span><span style="display:flex;"><span>)
+</span></span></code></pre></div><p>And return these directly. The problem is you lose the boolean answer to &ldquo;is it repairable?&rdquo; You&rsquo;d have to use <code>errors.Is()</code> checks at the call site, which is more awkward:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">validateRepairability</span>(<span style="color:#a6e22e">doc</span>)
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">if</span> <span style="color:#a6e22e">errors</span>.<span style="color:#a6e22e">Is</span>(<span style="color:#a6e22e">err</span>, <span style="color:#a6e22e">ErrCompetingRoots</span>) {
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// handle competing roots</span>
+</span></span><span style="display:flex;"><span>} <span style="color:#66d9ef">else</span> <span style="color:#66d9ef">if</span> <span style="color:#a6e22e">errors</span>.<span style="color:#a6e22e">Is</span>(<span style="color:#a6e22e">err</span>, <span style="color:#a6e22e">ErrNoStructuralAnchor</span>) {
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// handle no anchor</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>versus:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#a6e22e">result</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">isRepairable</span>(<span style="color:#a6e22e">doc</span>)
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">if</span> !<span style="color:#a6e22e">result</span>.<span style="color:#a6e22e">Repairable</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">switch</span> <span style="color:#a6e22e">result</span>.<span style="color:#a6e22e">Reason</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">case</span> <span style="color:#a6e22e">ReasonCompetingRoots</span>:
+</span></span><span style="display:flex;"><span>        <span style="color:#75715e">// handle competing roots</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">case</span> <span style="color:#a6e22e">ReasonNoStructuralAnchor</span>:
+</span></span><span style="display:flex;"><span>        <span style="color:#75715e">// handle no anchor</span>
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>The latter is clearer and easier to extend.</p>
+<h3 id="this-seems-like-a-lot-of-ceremony-for-a-simple-check">&ldquo;This seems like a lot of ceremony for a simple check&rdquo;</h3>
+<p>It would be, if this were just a simple check. But it&rsquo;s not, it&rsquo;s a critical validation point that:</p>
+<ul>
+<li>Gates the entire sanitization pipeline</li>
+<li>Feeds production observability metrics</li>
+<li>Needs to be testable independently</li>
+<li>May be reused in other contexts</li>
+</ul>
+<p>The &ldquo;ceremony&rdquo; is buying me maintainability, testability, and clear separation between domain logic and infrastructure concerns. In a small script, this would be overkill. In a production service with observability requirements, it&rsquo;s appropriate engineering.</p>
+<h2 id="lessons-learned">Lessons Learned</h2>
+<ol>
+<li>
+<p><strong>Consider the full context</strong>: What seemed like a simple boolean check was actually feeding a sophisticated observability system. The design needed to account for that.</p>
+</li>
+<li>
+<p><strong>Domain-orchestration separation matters</strong>: Keeping <code>isRepairable()</code> independent of <code>SanitizationError</code> made the code more testable and reusable.</p>
+</li>
+<li>
+<p><strong>Explicit is better than clever</strong>: The mapper function and result struct add lines of code, but they make the system&rsquo;s behavior explicit and type-safe.</p>
+</li>
+<li>
+<p><strong>Error design is about more than error handling</strong>: Good error design supports debugging, observability, and maintenance, not just reporting failures.</p>
+</li>
+</ol>
+<p>When you&rsquo;re choosing between <code>(bool, error)</code>, <code>error</code>-only, or a custom result type, think about:</p>
+<ul>
+<li>What downstream systems consume this information?</li>
+<li>Will this logic be reused in different contexts?</li>
+<li>What happens when you need to add a new failure case?</li>
+<li>How will this be tested?</li>
+</ul>
+<p>The answers to these questions should guide your design more than following a pattern because it&rsquo;s &ldquo;idiomatic.&rdquo;</p>
+
+  </article>
+  <nav id="mini-toc" aria-label="Table of contents">
+    
+  </nav>
+  <script>
+    (function () {
+      const toc = document.getElementById('mini-toc');
+      if (!toc) return;
+
+      
+      const headings = Array.from(
+        document.querySelectorAll('article h2, article h3')
+      );
+
+      if (headings.length === 0) return;
+
+      
+      headings.forEach((h) => {
+        
+        if (!h.id) {
+          h.id = h.textContent.trim()
+            .toLowerCase()
+            .replace(/[^\w\s-]/g, '')
+            .replace(/\s+/g, '-');
+        }
+
+        const a = document.createElement('a');
+        a.href = '#' + h.id;
+        a.textContent = h.textContent;
+        
+        if (h.tagName === 'H3') a.style.paddingLeft = '1rem';
+        toc.appendChild(a);
+      });
+
+      
+      const links = Array.from(toc.querySelectorAll('a'));
+
+      function onScroll() {
+        let current = headings[0];
+        for (const h of headings) {
+          if (h.getBoundingClientRect().top <= 120) {
+            current = h;
+          }
+        }
+        links.forEach((a) => {
+          a.classList.toggle('active', a.getAttribute('href') === '#' + current.id);
+        });
+      }
+
+      window.addEventListener('scroll', onScroll, { passive: true });
+      onScroll(); 
+    })();
+  </script>
+</main>
+
+<div class="comment">
+  <script src="https://utteranc.es/client.js" repo="rohmanhakim/rohmanhakim.github.io" issue-term="pathname"
+    theme="github-light" crossorigin="anonymous" async>
+    </script>
+</div>
+
+
+  <footer>
+  <script>
+  const btnSwitchTheme = document.getElementById("btn-switch-theme")
+
+  function getTheme() {
+    const cookies = Object.fromEntries(
+      document.cookie.split("; ").map(c => c.split("="))
+    );
+    return cookies.theme || "light";
+  }
+
+  function invertTheme(theme) {
+    return theme == "light" ? "dark" : "light"
+  }
+
+  function applyTheme(toTheme) {
+    btnSwitchTheme.textContent = "Switch to " + invertTheme(toTheme) + " theme"
+    document.querySelector("html").style = toTheme == "dark" ? "filter: invert(1);" : ""
+    neuralizeChildrenColor("img", toTheme)
+    neuralizeChildrenColor("button", toTheme)
+    neuralizeChildrenColor(".resume-download-button", toTheme)
+    neuralizeChildrenColor(".highlight", toTheme)
+  }
+
+  function neuralizeChildrenColor(child, toTheme) {
+    document.querySelectorAll(child).forEach(el => {
+      el.style = toTheme == "dark" ? "filter: invert(1);" : ""
+    })
+  }
+
+  btnSwitchTheme.addEventListener("click", (event) => {
+    const theme = getTheme()
+    const newTheme = invertTheme(theme)
+    document.cookie = "theme=" + newTheme + ";path=/"
+    applyTheme(newTheme)
+  })
+
+  applyTheme(getTheme())
+</script>
+<div class="footer-container">
+  <p>Copyright © 2026 <a href="/">Muhammad Arif Rohman Hakim</a></p>
+  <ul>
+    <li>
+      <a href="https://www.linkedin.com/in/rohmanhakim/">LinkedIn</a>
+    </li>
+    <li>
+      <a href="https://github.com/rohmanhakim/">GitHub</a>
+    </li>
+    <li>
+      <a href="/about">About</a>
+    </li>
+    <li>
+      <a href="/index.xml" title="RSS Feed">RSS</a>
+    </li>
+  </ul>
+</div>
+  
+  </footer>
+  </body>
+</html>

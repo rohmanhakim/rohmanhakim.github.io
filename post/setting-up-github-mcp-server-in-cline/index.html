@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Setting Up GitHub MCP Server in Cline | Arif&#39;s Homepage</title>
+    <link rel="stylesheet" href="/css/style.css" />
+    <link rel="stylesheet" href="/css/fonts.css" />
+    
+  
+    <meta name="description" content="Learn how to connect the GitHub MCP server to Cline in VS Code using Docker or remote OAuth, so your AI coding agent can read dependency source code directly from GitHub." />
+  
+  <link rel="stylesheet" href="/css/mini-toc.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Source+Sans+3:ital,wght@0,200..900;1,200..900&display=swap" rel="stylesheet">
+  
+
+<link rel="stylesheet" href="/css/custom.css">
+<link rel="stylesheet" href="/css/yahoo.css">
+
+
+<link rel="alternate" type="application/rss+xml" title="Arif&#39;s Homepage - RSS Feed" href="https://arifrohman.com/index.xml" />
+
+<link rel="alternate" type="application/rss+xml" title="Arif&#39;s Homepage - Posts RSS Feed" href="https://arifrohman.com/post/index.xml" />
+
+
+
+
+
+<script data-goatcounter="https://arifrohman.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
+<div class="header-container">
+  <h1><a href="/">Arif's Homepage</a></h1>
+  <ul>
+    <li>
+      <a href="https://www.linkedin.com/in/rohmanhakim/">LinkedIn</a>
+    </li>
+    <li>
+      <a href="https://github.com/rohmanhakim/">GitHub</a>
+    </li>
+    <li>
+      <a href="/about">About</a>
+    </li>
+    <li>
+      <a href="/index.xml" title="RSS Feed">RSS</a>
+    </li>
+  </ul>
+  <button id="btn-switch-theme">Switch to dark Theme</button>
+</div>
+  </head>
+
+  <body>
+
+<div class="article-meta">
+  <h1><span class="title">Setting Up GitHub MCP Server in Cline</span></h1>
+  
+</div>
+
+<main>
+  <article>
+    <p>If you&rsquo;ve been following along with agentic coding in Cline (I wrote about <a href="/post/running-agentic-coding-for-free-my-openrouter-plus-cline-setup/">setting up a free Cline + OpenRouter workflow</a> earlier), you&rsquo;ve probably hit this limitation by now: Cline only knows what&rsquo;s in your local project files. It can read your code, write new code, run tests etc. all great, but the moment you need it to understand something about a <em>dependency</em> (a library your project imports or a framework you&rsquo;re building on top of) it&rsquo;s stuck. It either guesses from what&rsquo;s available locally, or making you guide it by posting the information retrieved from the dependency&rsquo;s girhub repo, or you end up copying snippets into your project just so the model can see them.</p>
+<p>I ran into this while working on a Go project that depends on a few libraries hosted on GitHub. When debugging a weird interaction between my code and a dependency&rsquo;s internals, I wanted Cline to just&hellip; go read the dependency&rsquo;s source. Trace a function, check how it handles edge cases, understand the data flow. Without me manually copy-pasting files around.</p>
+<p>That&rsquo;s what the GitHub MCP server solves. It connects Cline directly to GitHub&rsquo;s platform, so the model can read repositories, browse code files, search across repos, and more using natural language. This post walks through exactly how to set it up.</p>
+<blockquote>
+<p>There are many other things the GitHub MCP server enables like managing issues, creating pull requests, monitoring GitHub Actions, analyzing security alerts etc. but this post focuses on the setup and my specific use case: reading and analyzing dependency source code. The other capabilities are there once you have it running.</p>
+</blockquote>
+<hr>
+<h2 id="what-is-mcp">What is MCP?</h2>
+<p><strong>MCP (Model Context Protocol)</strong> is a standard that lets AI tools like Cline connect to external services. Think of it as a plugin system: Cline on its own can work with your local files, but through MCP servers it can reach out to external platforms and data sources.</p>
+<p>The <strong>GitHub MCP server</strong> is one such service. It gives Cline access to GitHub&rsquo;s API: reading repos, browsing file contents, searching code, and more. Once it&rsquo;s connected, you can ask Cline things like &ldquo;go read the source code of this library on GitHub and explain how this function works&rdquo; and it can actually do it.</p>
+<hr>
+<h2 id="prerequisites">Prerequisites</h2>
+<p>Before starting, make sure you have:</p>
+<ul>
+<li><strong>Docker</strong> installed and running (for the local setup)</li>
+<li>A <strong>GitHub account</strong> with a Personal Access Token (we&rsquo;ll create one in the steps below)</li>
+<li><strong>VS Code</strong> with the <strong>Cline extension</strong> installed (<a href="/post/running-agentic-coding-for-free-my-openrouter-plus-cline-setup/">see my earlier post</a> if you haven&rsquo;t set that up yet)</li>
+</ul>
+<p>There are two ways to connect the GitHub MCP server to Cline: <strong>local</strong> (running via Docker on your machine) and <strong>remote</strong> (hosted by GitHub, connected via OAuth). I&rsquo;ll cover both.</p>
+<hr>
+<h2 id="part-1-local-setup-docker--pat">Part 1: Local Setup (Docker + PAT)</h2>
+<p>This is the method I&rsquo;m using. It runs the GitHub MCP server as a Docker container on your machine, authenticated with a GitHub Personal Access Token.</p>
+<h3 id="step-1-create-a-github-personal-access-token">Step 1: Create a GitHub Personal Access Token</h3>
+<p>Go to <a href="https://github.com/settings/personal-access-tokens/new">github.com/settings/personal-access-tokens/new</a> and create a new fine-grained token.</p>
+<p>Under <strong>Repository access</strong>, select the repositories you want Cline to be able to read. You can pick specific repos or grant access to all repositories you own. Then, under <strong>Permissions</strong>, grant these repository-level permissions:</p>
+<ul>
+<li><strong>Contents</strong> (read): lets Cline read source code files from the repository</li>
+<li><strong>Metadata</strong> (read): lets Cline access repository metadata (name, description, etc.)</li>
+<li><strong>Issues</strong> (read): optional, useful if you want Cline to read issues</li>
+<li><strong>Pull requests</strong> (read): optional, useful if you want Cline to read pull requests</li>
+</ul>
+<p>Give it a descriptive name like <code>cline-mcp</code>, and set an expiration that works for you. Once created, <strong>copy the token immediately</strong> because GitHub will not show it to you again.</p>
+<blockquote>
+<p><strong>Security note:</strong> This token gives read access to your repositories. Treat it like a password. Don&rsquo;t commit it to version control, and consider using environment variables or a secrets manager if you work across multiple machines.</p>
+</blockquote>
+<h3 id="step-2-pull-the-docker-image">Step 2: Pull the Docker Image</h3>
+<p>The GitHub MCP server is distributed as a Docker image. Pull it once:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>docker pull ghcr.io/github/github-mcp-server
+</span></span></code></pre></div><p>This downloads the latest image to your machine. You only need to do this once (or when you want to update to a newer version).</p>
+<h3 id="step-3-configure-cline">Step 3: Configure Cline</h3>
+<p>The configuration lives in Cline&rsquo;s MCP settings file. The path depends on your system, but on Linux it&rsquo;s typically:</p>
+<pre tabindex="0"><code>~/.config/Code/User/globalStorage/saoudrizwan.claude-dev/settings/cline_mcp_settings.json
+</code></pre><p>Open this file and add the GitHub MCP server configuration. If the file already has other servers in it, just add the new entry alongside them:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-json" data-lang="json"><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">&#34;mcpServers&#34;</span>: {
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">&#34;github.com/github/github-mcp-server&#34;</span>: {
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">&#34;command&#34;</span>: <span style="color:#e6db74">&#34;docker&#34;</span>,
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">&#34;args&#34;</span>: [
+</span></span><span style="display:flex;"><span>        <span style="color:#e6db74">&#34;run&#34;</span>,
+</span></span><span style="display:flex;"><span>        <span style="color:#e6db74">&#34;-i&#34;</span>,
+</span></span><span style="display:flex;"><span>        <span style="color:#e6db74">&#34;--rm&#34;</span>,
+</span></span><span style="display:flex;"><span>        <span style="color:#e6db74">&#34;-e&#34;</span>,
+</span></span><span style="display:flex;"><span>        <span style="color:#e6db74">&#34;GITHUB_PERSONAL_ACCESS_TOKEN&#34;</span>,
+</span></span><span style="display:flex;"><span>        <span style="color:#e6db74">&#34;ghcr.io/github/github-mcp-server&#34;</span>
+</span></span><span style="display:flex;"><span>      ],
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">&#34;env&#34;</span>: {
+</span></span><span style="display:flex;"><span>        <span style="color:#f92672">&#34;GITHUB_PERSONAL_ACCESS_TOKEN&#34;</span>: <span style="color:#e6db74">&#34;your-token-here&#34;</span>
+</span></span><span style="display:flex;"><span>      },
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">&#34;disabled&#34;</span>: <span style="color:#66d9ef">false</span>,
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">&#34;autoApprove&#34;</span>: []
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>  }
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>Replace <code>your-token-here</code> with the Personal Access Token you created in Step 1.</p>
+<p>A few things to note:</p>
+<ul>
+<li><strong><code>command</code></strong> and <strong><code>args</code></strong>: This tells Cline to start the MCP server by running a Docker container. The <code>-i</code> flag keeps stdin open (needed for the MCP protocol), and <code>--rm</code> removes the container when it stops.</li>
+<li><strong><code>env</code></strong>: The token is passed as an environment variable to the container. It&rsquo;s never written to disk inside the container itself.</li>
+<li><strong><code>disabled: false</code></strong>: The server is active immediately.</li>
+<li><strong><code>autoApprove: []</code></strong>: Cline will ask for your approval before using any MCP tool. You can configure specific tools to auto-approve later if you want.</li>
+</ul>
+<p>Save the file. Cline will automatically detect the new server configuration and start the container.</p>
+<h3 id="step-4-verify-it-works">Step 4: Verify It Works</h3>
+<p>Once Cline connects to the server, you should see a new section in the MCP tools area with GitHub-related tools available. To quickly verify the connection is working, you can ask Cline something like:</p>
+<blockquote>
+<p><em>&ldquo;Use the get_me GitHub tool to check my authentication.&rdquo;</em></p>
+</blockquote>
+<p>If it returns your GitHub username and profile info, the server is up and running.</p>
+<hr>
+<h2 id="part-2-remote-setup-oauth">Part 2: Remote Setup (OAuth)</h2>
+<p>If you don&rsquo;t want to deal with Docker, GitHub hosts a remote version of the MCP server. It uses OAuth for authentication which require you to you log in through your browser on first use, and the token is kept in memory only.</p>
+<p>The configuration for Cline looks like this:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-json" data-lang="json"><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">&#34;mcpServers&#34;</span>: {
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">&#34;github.com/github/github-mcp-server&#34;</span>: {
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">&#34;type&#34;</span>: <span style="color:#e6db74">&#34;http&#34;</span>,
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">&#34;url&#34;</span>: <span style="color:#e6db74">&#34;https://api.githubcopilot.com/mcp/&#34;</span>,
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">&#34;disabled&#34;</span>: <span style="color:#66d9ef">false</span>,
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">&#34;autoApprove&#34;</span>: []
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>  }
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>On first use, it&rsquo;ll open a browser window for you to authenticate with GitHub. After that, it&rsquo;ll  just works.</p>
+<h3 id="when-to-use-which">When to use which</h3>
+<table>
+  <thead>
+      <tr>
+          <th></th>
+          <th>Local (Docker)</th>
+          <th>Remote (OAuth)</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td><strong>Auth</strong></td>
+          <td>Personal Access Token</td>
+          <td>OAuth (browser-based)</td>
+      </tr>
+      <tr>
+          <td><strong>Requires Docker</strong></td>
+          <td>Yes</td>
+          <td>No</td>
+      </tr>
+      <tr>
+          <td><strong>Token stored</strong></td>
+          <td>In your config file</td>
+          <td>In memory only</td>
+      </tr>
+      <tr>
+          <td><strong>Works offline</strong></td>
+          <td>No (needs GitHub API)</td>
+          <td>No (needs GitHub API)</td>
+      </tr>
+      <tr>
+          <td><strong>Best for</strong></td>
+          <td>CI/CD, headless environments, fine-grained control</td>
+          <td>Simpler setup, no token management</td>
+      </tr>
+  </tbody>
+</table>
+<p>I prefer the local Docker setup because I want fine-grained control over the token scopes, and I&rsquo;m already running Docker on my machine anyway. But the remote option is perfectly valid if you want something simpler.</p>
+<hr>
+<h2 id="in-practice-reading-dependency-source-code">In Practice: Reading Dependency Source Code</h2>
+<p>Here&rsquo;s where this gets useful. Let me walk through the kind of thing I actually use this for.</p>
+<p>Say my Go project depends on a library, and I&rsquo;m hitting a bug where a function from that library behaves differently than I expect. Before the GitHub MCP server, my options were:</p>
+<ol>
+<li>Open the library&rsquo;s repo in a browser, navigate to the file, read it myself, and explain it to Cline</li>
+<li>Copy the relevant source files into my project as reference</li>
+<li>Just guess and iterate until it works</li>
+</ol>
+<p>None of those are great. Now, I can just ask Cline directly:</p>
+<blockquote>
+<p><em>&ldquo;Read the file <code>pkg/runner/executor.go</code> from the repo <code>someorg/somelib</code> on the <code>main</code> branch. I need to understand how it handles context cancellation when the parent context is done.&rdquo;</em></p>
+</blockquote>
+<p>Cline uses the GitHub MCP server&rsquo;s <code>get_file_contents</code> tool to fetch the file directly from GitHub, reads the code, and can then explain the behavior, trace the logic, and suggest fixes without me having to manually bring the source code into the conversation.</p>
+<p>This works for any public repo, and for any private repo your token has access to. It also works across branches and tags, so you can read the exact version of a dependency your project uses.</p>
+<p>A few other things I&rsquo;ve found myself asking:</p>
+<ul>
+<li><em>&ldquo;What does the error handling look like in <code>internal/storage/writer.go</code> in <code>someorg/somelib</code>?&rdquo;</em></li>
+<li><em>&ldquo;Search for all usages of <code>context.WithTimeout</code> in the <code>someorg/somelib</code> repo.&rdquo;</em></li>
+<li><em>&ldquo;Show me the directory listing of <code>pkg/</code> in <code>someorg/somelib</code> so I can understand how it&rsquo;s structured.&rdquo;</em></li>
+</ul>
+<p>The model can then take what it learned from the dependency&rsquo;s source and apply it directly to the code in my local project. It&rsquo;s a significant workflow improvement when you&rsquo;re dealing with libraries that aren&rsquo;t well-documented or whose behavior you need to verify at the source level.</p>
+<hr>
+<h2 id="what-else-can-you-do">What Else Can You Do?</h2>
+<p>Reading code is just one capability. Once the GitHub MCP server is connected, Cline has access to a broad set of GitHub tools: managing issues, creating and reviewing pull requests, monitoring GitHub Actions workflows, searching code across repositories, and more.</p>
+<p>These capabilities are all there if you want to explore them, but they&rsquo;re outside the scope of this post. The setup process is the same regardless of which tools you end up using.</p>
+<hr>
+<h2 id="security-considerations">Security Considerations</h2>
+<p>A few things worth keeping in mind:</p>
+<ul>
+<li><strong>Token permissions:</strong> Only grant the permissions you actually need. For reading public repos, you can skip repository-level permissions entirely. For private repos, grant the minimum permissions required, which <strong>Contents (read)</strong> is usually enough for the use case described in this post.</li>
+<li><strong>Read-only mode:</strong> The GitHub MCP server supports a read-only flag (<code>--read-only</code> as a Docker arg or <code>GITHUB_READ_ONLY=1</code> as an env var). This prevents Cline from making any modifications through GitHub. Useful if you only want the read capabilities.</li>
+<li><strong>Token storage:</strong> In the local Docker setup, the token sits in your <code>cline_mcp_settings.json</code> file. Make sure this file isn&rsquo;t committed to version control. If you&rsquo;re working in a team, use environment variables instead of hardcoding the token.</li>
+</ul>
+<hr>
+<h2 id="recap">Recap</h2>
+<ol>
+<li>Create a fine-grained GitHub Personal Access Token at <a href="https://github.com/settings/personal-access-tokens/new">github.com/settings/personal-access-tokens/new</a> with <strong>Contents (read)</strong> permission</li>
+<li>Pull the Docker image: <code>docker pull ghcr.io/github/github-mcp-server</code></li>
+<li>Add the server configuration to your <code>cline_mcp_settings.json</code> file with your token</li>
+<li>Restart or let Cline pick up the new config, and verify with a <code>get_me</code> check</li>
+<li>Start asking Cline to read and analyze code from GitHub repos</li>
+</ol>
+<p>Alternatively, use the remote OAuth setup. Add a single entry to your MCP settings, authenticate through the browser, and skip Docker entirely.</p>
+<hr>
+<p>If you&rsquo;ve already got Cline running, adding the GitHub MCP server is a quick extension that opens up a lot of possibilities. For me, the ability to have Cline read and reason about dependency source code directly has been the most practical benefit and no more copy-pasting files or explaining library internals to the model manually.</p>
+<p>Thanks for reading!</p>
+
+  </article>
+  <nav id="mini-toc" aria-label="Table of contents">
+    
+  </nav>
+  <script>
+    (function () {
+      const toc = document.getElementById('mini-toc');
+      if (!toc) return;
+
+      
+      const headings = Array.from(
+        document.querySelectorAll('article h2, article h3')
+      );
+
+      if (headings.length === 0) return;
+
+      
+      headings.forEach((h) => {
+        
+        if (!h.id) {
+          h.id = h.textContent.trim()
+            .toLowerCase()
+            .replace(/[^\w\s-]/g, '')
+            .replace(/\s+/g, '-');
+        }
+
+        const a = document.createElement('a');
+        a.href = '#' + h.id;
+        a.textContent = h.textContent;
+        
+        if (h.tagName === 'H3') a.style.paddingLeft = '1rem';
+        toc.appendChild(a);
+      });
+
+      
+      const links = Array.from(toc.querySelectorAll('a'));
+
+      function onScroll() {
+        let current = headings[0];
+        for (const h of headings) {
+          if (h.getBoundingClientRect().top <= 120) {
+            current = h;
+          }
+        }
+        links.forEach((a) => {
+          a.classList.toggle('active', a.getAttribute('href') === '#' + current.id);
+        });
+      }
+
+      window.addEventListener('scroll', onScroll, { passive: true });
+      onScroll(); 
+    })();
+  </script>
+</main>
+
+<div class="comment">
+  <script src="https://utteranc.es/client.js" repo="rohmanhakim/rohmanhakim.github.io" issue-term="pathname"
+    theme="github-light" crossorigin="anonymous" async>
+    </script>
+</div>
+
+
+  <footer>
+  <script>
+  const btnSwitchTheme = document.getElementById("btn-switch-theme")
+
+  function getTheme() {
+    const cookies = Object.fromEntries(
+      document.cookie.split("; ").map(c => c.split("="))
+    );
+    return cookies.theme || "light";
+  }
+
+  function invertTheme(theme) {
+    return theme == "light" ? "dark" : "light"
+  }
+
+  function applyTheme(toTheme) {
+    btnSwitchTheme.textContent = "Switch to " + invertTheme(toTheme) + " theme"
+    document.querySelector("html").style = toTheme == "dark" ? "filter: invert(1);" : ""
+    neuralizeChildrenColor("img", toTheme)
+    neuralizeChildrenColor("button", toTheme)
+    neuralizeChildrenColor(".resume-download-button", toTheme)
+    neuralizeChildrenColor(".highlight", toTheme)
+  }
+
+  function neuralizeChildrenColor(child, toTheme) {
+    document.querySelectorAll(child).forEach(el => {
+      el.style = toTheme == "dark" ? "filter: invert(1);" : ""
+    })
+  }
+
+  btnSwitchTheme.addEventListener("click", (event) => {
+    const theme = getTheme()
+    const newTheme = invertTheme(theme)
+    document.cookie = "theme=" + newTheme + ";path=/"
+    applyTheme(newTheme)
+  })
+
+  applyTheme(getTheme())
+</script>
+<div class="footer-container">
+  <p>Copyright © 2026 <a href="/">Muhammad Arif Rohman Hakim</a></p>
+  <ul>
+    <li>
+      <a href="https://www.linkedin.com/in/rohmanhakim/">LinkedIn</a>
+    </li>
+    <li>
+      <a href="https://github.com/rohmanhakim/">GitHub</a>
+    </li>
+    <li>
+      <a href="/about">About</a>
+    </li>
+    <li>
+      <a href="/index.xml" title="RSS Feed">RSS</a>
+    </li>
+  </ul>
+</div>
+  
+  </footer>
+  </body>
+</html>

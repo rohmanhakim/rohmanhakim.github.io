@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Arif&#39;s Homepage</title>
+    <link>https://arifrohman.com/</link>
+    <description>Recent content on Arif&#39;s Homepage</description>
+    <generator>Hugo</generator>
+    <language>en-us</language>
+    <lastBuildDate>Mon, 10 Aug 2026 00:00:00 +0000</lastBuildDate>
+    <atom:link href="https://arifrohman.com/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Running Worms W.M.D Natively on PikaOS Linux</title>
+      <link>https://arifrohman.com/post/running-worms-w.m.d-natively-on-pikaos-linux/</link>
+      <pubDate>Mon, 10 Aug 2026 00:00:00 +0000</pubDate>
+      <guid>https://arifrohman.com/post/running-worms-w.m.d-natively-on-pikaos-linux/</guid>
+      <description>How I got the native Linux build of Worms W.M.D running on Debian-based Linux using Steam Runtime libraries and a launch wrapper.</description>
+    </item>
+    <item>
+      <title>Debugging a VS Code Extension Against Another Project (Without Losing Your Extensions)</title>
+      <link>https://arifrohman.com/post/debugging-a-vs-code-extension-against-another-project-without-losing-your-extensions/</link>
+      <pubDate>Fri, 07 Aug 2026 00:00:00 +0000</pubDate>
+      <guid>https://arifrohman.com/post/debugging-a-vs-code-extension-against-another-project-without-losing-your-extensions/</guid>
+      <description>Learn how to debug a VS Code extension against a real project while keeping only the extensions you want available in the Extension Development Host.</description>
+    </item>
+    <item>
+      <title>Fixing PATH issue in VS Code Terminal</title>
+      <link>https://arifrohman.com/post/fixing-path-issue-in-vscode-terminal/</link>
+      <pubDate>Thu, 06 Aug 2026 00:00:00 +0000</pubDate>
+      <guid>https://arifrohman.com/post/fixing-path-issue-in-vscode-terminal/</guid>
+      <description>Quick fix for when a CLI tool works in your regular terminal but fails with &amp;lsquo;command not found&amp;rsquo; in VS Code&amp;rsquo;s integrated terminal. The issue is bash&amp;rsquo;s early return for non-interactive shells, and the fix is moving PATH exports before that return.</description>
+    </item>
+    <item>
+      <title>Setting Up GitHub MCP Server in Cline</title>
+      <link>https://arifrohman.com/post/setting-up-github-mcp-server-in-cline/</link>
+      <pubDate>Mon, 03 Aug 2026 00:00:00 +0000</pubDate>
+      <guid>https://arifrohman.com/post/setting-up-github-mcp-server-in-cline/</guid>
+      <description>Step-by-step guide to setting up the GitHub MCP server in Cline, giving your AI coding agent direct access to read and analyze GitHub repositories.</description>
+    </item>
+    <item>
+      <title>Go&#39;s Delve Suddenly Print `Building .`</title>
+      <link>https://arifrohman.com/post/gos-delve-suddenly-print-building-./</link>
+      <pubDate>Thu, 09 Jul 2026 00:00:00 +0000</pubDate>
+      <guid>https://arifrohman.com/post/gos-delve-suddenly-print-building-./</guid>
+      <description>A short note on why VS Code&amp;rsquo;s Go debugger started printing &amp;lsquo;Building .&amp;rsquo; after upgrading to Delve 1.27.0, and whether it can be disabled.</description>
+    </item>
+    <item>
+      <title>Integer Digits Extraction in Go</title>
+      <link>https://arifrohman.com/post/integer-digits-extraction-in-go/</link>
+      <pubDate>Thu, 04 Jun 2026 00:00:00 +0000</pubDate>
+      <guid>https://arifrohman.com/post/integer-digits-extraction-in-go/</guid>
+      <description>A post exploring different approach of digits extraction in GO.</description>
+    </item>
+    <item>
+      <title>Implementing Any-In Prioritized-Out Data Type using Heap in Go</title>
+      <link>https://arifrohman.com/post/implementing-any-in-prioritized-out-data-type-using-heap-in-go/</link>
+      <pubDate>Mon, 01 Jun 2026 00:00:00 +0000</pubDate>
+      <guid>https://arifrohman.com/post/implementing-any-in-prioritized-out-data-type-using-heap-in-go/</guid>
+      <description>Explore how to design an any-in prioritized-out data structure using priority queue and heap in go.</description>
+    </item>
+    <item>
+      <title>Storing States as Bitmasks</title>
+      <link>https://arifrohman.com/post/storing-states-as-bitmasks/</link>
+      <pubDate>Mon, 25 May 2026 00:00:00 +0000</pubDate>
+      <guid>https://arifrohman.com/post/storing-states-as-bitmasks/</guid>
+      <description>A post describing a technique to store states of collection of data inside an integer.</description>
+    </item>
+    <item>
+      <title>Designing a Retry Handler in Go for Reliable Pipelines</title>
+      <link>https://arifrohman.com/engineering-note/designing-a-retry-handler-in-go-for-reliable-pipelines/</link>
+      <pubDate>Fri, 27 Feb 2026 00:00:00 +0000</pubDate>
+      <guid>https://arifrohman.com/engineering-note/designing-a-retry-handler-in-go-for-reliable-pipelines/</guid>
+      <description>Designs a production-grade retry handler in Go for concurrent pipeline systems, covering error classification (auto/manual/never retry), exponential backoff with jitter to prevent thundering herds, context-aware cancellation, observability hooks, result struct vs. multi-value returns, and a generic type-safe API to make retry logic reusable across different pipeline stages</description>
+    </item>
+    <item>
+      <title>Designing Error Returns in Go: A Case Study in Domain-Orchestration Separation</title>
+      <link>https://arifrohman.com/engineering-note/designing-error-returns-in-go-a-case-study-in-domain-orchestration-separation/</link>
+      <pubDate>Sun, 08 Feb 2026 00:00:00 +0000</pubDate>
+      <guid>https://arifrohman.com/engineering-note/designing-error-returns-in-go-a-case-study-in-domain-orchestration-separation/</guid>
+      <description>Explore how to design error-returning functions in Go that separate domain logic from orchestration concerns. Learn why a custom RepairableResult type beats (bool, error) and error-only patterns when building observable, testable, and reusable validation logic in production systems.</description>
+    </item>
+  </channel>
+</rss>

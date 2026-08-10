@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Github on Arif&#39;s Homepage</title>
+    <link>https://arifrohman.com/tags/github/</link>
+    <description>Recent content in Github on Arif&#39;s Homepage</description>
+    <generator>Hugo</generator>
+    <language>en-us</language>
+    <lastBuildDate>Mon, 03 Aug 2026 00:00:00 +0000</lastBuildDate>
+    <atom:link href="https://arifrohman.com/tags/github/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Setting Up GitHub MCP Server in Cline</title>
+      <link>https://arifrohman.com/post/setting-up-github-mcp-server-in-cline/</link>
+      <pubDate>Mon, 03 Aug 2026 00:00:00 +0000</pubDate>
+      <guid>https://arifrohman.com/post/setting-up-github-mcp-server-in-cline/</guid>
+      <description>Step-by-step guide to setting up the GitHub MCP server in Cline, giving your AI coding agent direct access to read and analyze GitHub repositories.</description>
+    </item>
+  </channel>
+</rss>

@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Integer Digits Extraction in Go | Arif&#39;s Homepage</title>
+    <link rel="stylesheet" href="/css/style.css" />
+    <link rel="stylesheet" href="/css/fonts.css" />
+    
+  
+    <meta name="description" content="A post exploring different approach of digits extraction in GO." />
+  
+  <link rel="stylesheet" href="/css/mini-toc.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Source+Sans+3:ital,wght@0,200..900;1,200..900&display=swap" rel="stylesheet">
+  
+
+<link rel="stylesheet" href="/css/custom.css">
+<link rel="stylesheet" href="/css/yahoo.css">
+
+
+<link rel="alternate" type="application/rss+xml" title="Arif&#39;s Homepage - RSS Feed" href="https://arifrohman.com/index.xml" />
+
+<link rel="alternate" type="application/rss+xml" title="Arif&#39;s Homepage - Posts RSS Feed" href="https://arifrohman.com/post/index.xml" />
+
+
+
+
+
+<script data-goatcounter="https://arifrohman.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
+<div class="header-container">
+  <h1><a href="/">Arif's Homepage</a></h1>
+  <ul>
+    <li>
+      <a href="https://www.linkedin.com/in/rohmanhakim/">LinkedIn</a>
+    </li>
+    <li>
+      <a href="https://github.com/rohmanhakim/">GitHub</a>
+    </li>
+    <li>
+      <a href="/about">About</a>
+    </li>
+    <li>
+      <a href="/index.xml" title="RSS Feed">RSS</a>
+    </li>
+  </ul>
+  <button id="btn-switch-theme">Switch to dark Theme</button>
+</div>
+  </head>
+
+  <body>
+
+<div class="article-meta">
+  <h1><span class="title">Integer Digits Extraction in Go</span></h1>
+  
+</div>
+
+<main>
+  <article>
+    <p>Sometimes a programming problem need you to extract the digits from an integer number.</p>
+<p>For example given an integer <code>1234</code> you want to examine <code>1</code>, <code>2</code>, <code>3</code> and <code>4</code> independently.</p>
+<p>There are several methods on how to do it:</p>
+<h2 id="method-1-least-significant-first--lsf-reverse-order">Method 1: Least-significant-first / LSF (reverse order)</h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#a6e22e">digits</span> <span style="color:#f92672">:=</span> []<span style="color:#66d9ef">int</span>{}
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">for</span> <span style="color:#a6e22e">n</span> &gt; <span style="color:#ae81ff">0</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">digits</span> = append(<span style="color:#a6e22e">digits</span>, <span style="color:#a6e22e">n</span><span style="color:#f92672">%</span><span style="color:#ae81ff">10</span>)
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">n</span> <span style="color:#f92672">/=</span> <span style="color:#ae81ff">10</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span><span style="color:#75715e">// 1234 → [4, 3, 2, 1]</span>
+</span></span></code></pre></div><p>This is the <strong>natural</strong> way the math works. <code>% 10</code> always peels off the rightmost digit. It&rsquo;s the fastest and simplest extraction, but we get digits backwards.</p>
+<p><strong>Use when:</strong> order doesn&rsquo;t matter (e.g. digit sum, digit frequency counts).</p>
+<h2 id="method-2-most-significant-first--msf-via-prepend">Method 2: Most-significant-first / MSF via prepend</h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#a6e22e">digits</span> <span style="color:#f92672">:=</span> []<span style="color:#66d9ef">int</span>{}
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">for</span> <span style="color:#a6e22e">n</span> &gt; <span style="color:#ae81ff">0</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">digits</span> = append([]<span style="color:#66d9ef">int</span>{<span style="color:#a6e22e">n</span> <span style="color:#f92672">%</span> <span style="color:#ae81ff">10</span>}, <span style="color:#a6e22e">digits</span><span style="color:#f92672">...</span>)
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">n</span> <span style="color:#f92672">/=</span> <span style="color:#ae81ff">10</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span><span style="color:#75715e">// 1234 → [1, 2, 3, 4]</span>
+</span></span></code></pre></div><p>We still peel from the right, but prepend each digit to the front. Correct order, but each prepend allocates a <strong>new backing array</strong> and copies all existing elements forward.</p>
+<p>This would give us <strong>O(D²)</strong> in allocations where D is digit count. Fine for 6-digit numbers, but it&rsquo;s the worst of the MSF options.</p>
+<p><strong>Use when:</strong> we want readable one-pass code and D is small.</p>
+<h2 id="method-3-most-significant-first-via-extract-then-reverse">Method 3: Most-significant-first via extract-then-reverse</h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#a6e22e">digits</span> <span style="color:#f92672">:=</span> []<span style="color:#66d9ef">int</span>{}
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">for</span> <span style="color:#a6e22e">n</span> &gt; <span style="color:#ae81ff">0</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">digits</span> = append(<span style="color:#a6e22e">digits</span>, <span style="color:#a6e22e">n</span><span style="color:#f92672">%</span><span style="color:#ae81ff">10</span>)
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">n</span> <span style="color:#f92672">/=</span> <span style="color:#ae81ff">10</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span><span style="color:#75715e">// reverse in-place</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">for</span> <span style="color:#a6e22e">l</span>, <span style="color:#a6e22e">r</span> <span style="color:#f92672">:=</span> <span style="color:#ae81ff">0</span>, len(<span style="color:#a6e22e">digits</span>)<span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>; <span style="color:#a6e22e">l</span> &lt; <span style="color:#a6e22e">r</span>; <span style="color:#a6e22e">l</span>, <span style="color:#a6e22e">r</span> = <span style="color:#a6e22e">l</span><span style="color:#f92672">+</span><span style="color:#ae81ff">1</span>, <span style="color:#a6e22e">r</span><span style="color:#f92672">-</span><span style="color:#ae81ff">1</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">digits</span>[<span style="color:#a6e22e">l</span>], <span style="color:#a6e22e">digits</span>[<span style="color:#a6e22e">r</span>] = <span style="color:#a6e22e">digits</span>[<span style="color:#a6e22e">r</span>], <span style="color:#a6e22e">digits</span>[<span style="color:#a6e22e">l</span>]
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span><span style="color:#75715e">// 1234 → [1, 2, 3, 4]</span>
+</span></span></code></pre></div><p>Extract LSF first (fast, no allocs beyond the initial slice), then reverse in-place. The reversal is O(D) with zero allocations. This is the <strong>most performant</strong> pure-integer approach.</p>
+<p><strong>Use when:</strong> we need correct order and care about allocations (e.g. called in a tight loop).</p>
+<h2 id="method-4-most-significant-first-via-strconvitoa">Method 4: Most-significant-first via <code>strconv.Itoa</code></h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#f92672">import</span> <span style="color:#e6db74">&#34;strconv&#34;</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">s</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">strconv</span>.<span style="color:#a6e22e">Itoa</span>(<span style="color:#a6e22e">n</span>)
+</span></span><span style="display:flex;"><span><span style="color:#75715e">// s[i] is a byte: &#39;0&#39;=48, &#39;1&#39;=49, ... &#39;9&#39;=57</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">// 1234 → s = &#34;1234&#34;, s[0]=&#39;1&#39;, s[1]=&#39;2&#39;, ...</span>
+</span></span></code></pre></div><p>We skip extraction entirely.</p>
+<p>The string is already in correct order. Byte comparisons work correctly since <code>'0' &lt; '1' &lt; ... &lt; '9'</code>. To get the actual integer value of a digit: <code>int(s[i] - '0')</code>.</p>
+<p>One allocation (the string), but it&rsquo;s a single contiguous one. Often the cleanest for problems where we&rsquo;re <strong>traversing</strong> digits rather than doing arithmetic on them.</p>
+<p><strong>Use when:</strong> we&rsquo;re comparing or indexing digits (peaks/valleys, palindrome check, adjacent difference), and don&rsquo;t need them as integers.</p>
+<h2 id="comparisons">Comparisons</h2>
+<table>
+  <thead>
+      <tr>
+          <th>Method</th>
+          <th>Order</th>
+          <th>Allocations</th>
+          <th>Best for</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>LSF (<code>% 10</code> + append)</td>
+          <td>Reversed</td>
+          <td>1 (slice)</td>
+          <td>Digit sum, frequency, order doesn&rsquo;t matter</td>
+      </tr>
+      <tr>
+          <td>Prepend (<code>[]int{d}, rest...</code>)</td>
+          <td>Correct</td>
+          <td>O(D²)</td>
+          <td>Readable code, small D</td>
+      </tr>
+      <tr>
+          <td>Extract + reverse in-place</td>
+          <td>Correct</td>
+          <td>1 (slice)</td>
+          <td>Performance-sensitive, need integers</td>
+      </tr>
+      <tr>
+          <td><code>strconv.Itoa</code></td>
+          <td>Correct</td>
+          <td>1 (string)</td>
+          <td>Traversal/comparison, cleaner code</td>
+      </tr>
+  </tbody>
+</table>
+<h2 id="case-study">Case Study</h2>
+<p>Let&rsquo;s use some problems from leetcode that involves digits extraction</p>
+<h3 id="3300-minimum-element-after-replacement-with-digit-sum">3300. Minimum Element After Replacement With Digit Sum</h3>
+<p><a href="https://leetcode.com/problems/minimum-element-after-replacement-with-digit-sum/description/">Problem&rsquo;s link</a></p>
+<pre tabindex="0"><code>You are given an integer array `nums`.
+You replace each element in nums with the sum of its digits.
+Return the minimum element in nums after all replacements.
+
+Example 1:
+
+Input: nums = [10,12,13,14]
+Output: 1
+Explanation:
+nums becomes [1, 3, 4, 5] after all replacements, with minimum element 1.
+
+Example 2:
+Input: nums = [1,2,3,4]
+Output: 1
+Explanation:
+nums becomes [1, 2, 3, 4] after all replacements, with minimum element 1.
+
+Example 3:
+Input: nums = [999,19,199]
+Output: 10
+Explanation:
+nums becomes [27, 10, 19] after all replacements, with minimum element 10.
+
+Constraints:
+- 1 &lt;= nums.length &lt;= 100
+- 1 &lt;= nums[i] &lt;= 10^4
+</code></pre><p>This problem is a pure application of the LSF digit extraction we&rsquo;re just discussed.</p>
+<p>We only need the digit <em>values</em> for arithmetic (summing), <strong>order is irrelevant</strong>, so we can just use LSF with a running accumulator. No slice needed at all.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#66d9ef">func</span> <span style="color:#a6e22e">minElement</span>(<span style="color:#a6e22e">nums</span> []<span style="color:#66d9ef">int</span>) <span style="color:#66d9ef">int</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">min</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">math</span>.<span style="color:#a6e22e">MaxInt32</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">for</span> <span style="color:#a6e22e">_</span>, <span style="color:#a6e22e">n</span> <span style="color:#f92672">:=</span> <span style="color:#66d9ef">range</span> <span style="color:#a6e22e">nums</span> {
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">sum</span> <span style="color:#f92672">:=</span> <span style="color:#ae81ff">0</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">for</span> <span style="color:#a6e22e">n</span> &gt; <span style="color:#ae81ff">0</span> {
+</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">digit</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">n</span> <span style="color:#f92672">%</span> <span style="color:#ae81ff">10</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">sum</span> = <span style="color:#a6e22e">sum</span> <span style="color:#f92672">+</span> <span style="color:#a6e22e">digit</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">n</span> = <span style="color:#a6e22e">n</span> <span style="color:#f92672">/</span> <span style="color:#ae81ff">10</span>
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span> <span style="color:#a6e22e">sum</span> &lt; <span style="color:#a6e22e">min</span> {
+</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">min</span> = <span style="color:#a6e22e">sum</span>
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">min</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>In the algorithm, we accumulate directly into <code>sum</code> rather than collecting into a slice first. Then only build a slice when we actually need to index or traverse digits in order.</p>
+<h3 id="2553-separate-the-digits-in-an-array">2553. Separate the Digits in an Array</h3>
+<p><a href="https://leetcode.com/problems/separate-the-digits-in-an-array/description/">Problem&rsquo;s link</a></p>
+<pre tabindex="0"><code>Given an array of positive integers `nums`, return an array `answer` that consists of the digits of each integer in nums after separating them in the same order they appear in nums.
+
+To separate the digits of an integer is to get all the digits it has in the same order.
+
+- For example, for the integer 10921, the separation of its digits is [1,0,9,2,1].
+
+Example 1:
+Input: nums = [13,25,83,77]
+Output: [1,3,2,5,8,3,7,7]
+Explanation:
+- The separation of 13 is [1,3].
+- The separation of 25 is [2,5].
+- The separation of 83 is [8,3].
+- The separation of 77 is [7,7].
+answer = [1,3,2,5,8,3,7,7]. Note that answer contains the separations in the same order.
+
+Example 2:
+Input: nums = [7,1,3,9]
+Output: [7,1,3,9]
+Explanation: The separation of each integer in nums is itself.
+answer = [7,1,3,9].
+
+Constraints:
+- 1 &lt;= nums.length &lt;= 1000
+- 1 &lt;= nums[i] &lt;= 10^5
+</code></pre><p>We can extract LSF into a temp slice, then drain it in reverse into the output:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#66d9ef">func</span> <span style="color:#a6e22e">separateDigits</span>(<span style="color:#a6e22e">nums</span> []<span style="color:#66d9ef">int</span>) []<span style="color:#66d9ef">int</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">out</span> <span style="color:#f92672">:=</span> []<span style="color:#66d9ef">int</span>{}
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">for</span> <span style="color:#a6e22e">_</span>, <span style="color:#a6e22e">num</span> <span style="color:#f92672">:=</span> <span style="color:#66d9ef">range</span> <span style="color:#a6e22e">nums</span> {
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">res</span> <span style="color:#f92672">:=</span> []<span style="color:#66d9ef">int</span>{}
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">x</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">num</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">for</span> <span style="color:#a6e22e">x</span> <span style="color:#f92672">!=</span> <span style="color:#ae81ff">0</span> {
+</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">digit</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">x</span> <span style="color:#f92672">%</span> <span style="color:#ae81ff">10</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">x</span> = <span style="color:#a6e22e">x</span> <span style="color:#f92672">/</span> <span style="color:#ae81ff">10</span>
+</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">res</span> = append(<span style="color:#a6e22e">res</span>, <span style="color:#a6e22e">digit</span>)
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">for</span> len(<span style="color:#a6e22e">res</span>) <span style="color:#f92672">!=</span> <span style="color:#ae81ff">0</span> {
+</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">out</span> = append(<span style="color:#a6e22e">out</span>, <span style="color:#a6e22e">res</span>[len(<span style="color:#a6e22e">res</span>)<span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>])
+</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">res</span> = <span style="color:#a6e22e">res</span>[:len(<span style="color:#a6e22e">res</span>)<span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>]
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">out</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>In this approach, the only thing worth flagging is the draining loop. We&rsquo;re manually popping from <code>res</code> to reverse it, which is valid but verbose. This is exactly where the <strong>extract + reverse in-place</strong> pattern from our earlier discussion:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#66d9ef">func</span> <span style="color:#a6e22e">separateDigits</span>(<span style="color:#a6e22e">nums</span> []<span style="color:#66d9ef">int</span>) []<span style="color:#66d9ef">int</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">out</span> <span style="color:#f92672">:=</span> []<span style="color:#66d9ef">int</span>{}
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">for</span> <span style="color:#a6e22e">_</span>, <span style="color:#a6e22e">num</span> <span style="color:#f92672">:=</span> <span style="color:#66d9ef">range</span> <span style="color:#a6e22e">nums</span> {
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">res</span> <span style="color:#f92672">:=</span> []<span style="color:#66d9ef">int</span>{}
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">for</span> <span style="color:#a6e22e">num</span> &gt; <span style="color:#ae81ff">0</span> {
+</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">res</span> = append(<span style="color:#a6e22e">res</span>, <span style="color:#a6e22e">num</span><span style="color:#f92672">%</span><span style="color:#ae81ff">10</span>)
+</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">num</span> <span style="color:#f92672">/=</span> <span style="color:#ae81ff">10</span>
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>        <span style="color:#75715e">// reverse in-place</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">for</span> <span style="color:#a6e22e">l</span>, <span style="color:#a6e22e">r</span> <span style="color:#f92672">:=</span> <span style="color:#ae81ff">0</span>, len(<span style="color:#a6e22e">res</span>)<span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>; <span style="color:#a6e22e">l</span> &lt; <span style="color:#a6e22e">r</span>; <span style="color:#a6e22e">l</span>, <span style="color:#a6e22e">r</span> = <span style="color:#a6e22e">l</span><span style="color:#f92672">+</span><span style="color:#ae81ff">1</span>, <span style="color:#a6e22e">r</span><span style="color:#f92672">-</span><span style="color:#ae81ff">1</span> {
+</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">res</span>[<span style="color:#a6e22e">l</span>], <span style="color:#a6e22e">res</span>[<span style="color:#a6e22e">r</span>] = <span style="color:#a6e22e">res</span>[<span style="color:#a6e22e">r</span>], <span style="color:#a6e22e">res</span>[<span style="color:#a6e22e">l</span>]
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">out</span> = append(<span style="color:#a6e22e">out</span>, <span style="color:#a6e22e">res</span><span style="color:#f92672">...</span>)
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">out</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><code>res...</code> to append a slice into another slice is also worth having as a reflex. It&rsquo;s cleaner than a manual loop.</p>
+<p>Alternatively, since we&rsquo;re just traversing digits in order without arithmetic, <code>strconv.Itoa</code> is arguably the cleanest here:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#66d9ef">func</span> <span style="color:#a6e22e">separateDigits</span>(<span style="color:#a6e22e">nums</span> []<span style="color:#66d9ef">int</span>) []<span style="color:#66d9ef">int</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">out</span> <span style="color:#f92672">:=</span> []<span style="color:#66d9ef">int</span>{}
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">for</span> <span style="color:#a6e22e">_</span>, <span style="color:#a6e22e">num</span> <span style="color:#f92672">:=</span> <span style="color:#66d9ef">range</span> <span style="color:#a6e22e">nums</span> {
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">for</span> <span style="color:#a6e22e">_</span>, <span style="color:#a6e22e">ch</span> <span style="color:#f92672">:=</span> <span style="color:#66d9ef">range</span> <span style="color:#a6e22e">strconv</span>.<span style="color:#a6e22e">Itoa</span>(<span style="color:#a6e22e">num</span>) { 
+</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">out</span> = append(<span style="color:#a6e22e">out</span>, int(<span style="color:#a6e22e">ch</span><span style="color:#f92672">-</span><span style="color:#e6db74">&#39;0&#39;</span>))
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">out</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>No temp slice at all. The <code>int(ch - '0')</code> conversion is the idiom for turning a digit rune into its integer value.</p>
+<h3 id="7-reverse-integer">7. Reverse Integer</h3>
+<p><a href="https://leetcode.com/problems/reverse-integer/">Problem&rsquo;s link</a></p>
+<pre tabindex="0"><code>Given a signed 32-bit integer `x`, return x with its digits reversed. If reversing x causes the value to go outside the signed 32-bit integer range [-2^31, 2^31 - 1], then return 0.
+
+Assume the environment does not allow you to store 64-bit integers (signed or unsigned).
+
+Example 1:
+Input: x = 123
+Output: 321
+
+Example 2:
+Input: x = -123
+Output: -321
+
+Example 3:
+Input: x = 120
+Output: 21
+
+Constraints:
+- -2^31 &lt;= x &lt;= 2^31 - 1
+</code></pre><p>This one has a twist: the overflow constraint makes it more interesting than a standard reversal.</p>
+<p>The naive approach :
+extract all digits -&gt; reverse -&gt; reconstruct</p>
+<p>but this requires storing the full reversed number before checking overflow, which is too late.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">func</span> <span style="color:#a6e22e">reverse</span>(<span style="color:#a6e22e">x</span> <span style="color:#66d9ef">int</span>) <span style="color:#66d9ef">int</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">sign</span> <span style="color:#f92672">:=</span> <span style="color:#ae81ff">1</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> <span style="color:#a6e22e">x</span> &lt; <span style="color:#ae81ff">0</span> {
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">sign</span> = <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">remaining</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">x</span> <span style="color:#f92672">*</span> <span style="color:#a6e22e">sign</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">sum</span> <span style="color:#f92672">:=</span> <span style="color:#ae81ff">0</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">for</span> <span style="color:#a6e22e">remaining</span> <span style="color:#f92672">!=</span> <span style="color:#ae81ff">0</span> {
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">currentDigit</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">remaining</span> <span style="color:#f92672">%</span> <span style="color:#ae81ff">10</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">remaining</span> = <span style="color:#a6e22e">remaining</span> <span style="color:#f92672">/</span> <span style="color:#ae81ff">10</span>
+</span></span><span style="display:flex;"><span>        
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">sum</span> = <span style="color:#a6e22e">sum</span><span style="color:#f92672">*</span><span style="color:#ae81ff">10</span> <span style="color:#f92672">+</span> <span style="color:#a6e22e">currentDigit</span> <span style="color:#75715e">// ---&gt; no guard will cause overflow!</span>
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">sum</span> <span style="color:#f92672">*</span> <span style="color:#a6e22e">sign</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>We must add guard before accumulate the sum:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#66d9ef">func</span> <span style="color:#a6e22e">reverse</span>(<span style="color:#a6e22e">x</span> <span style="color:#66d9ef">int</span>) <span style="color:#66d9ef">int</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">sign</span> <span style="color:#f92672">:=</span> <span style="color:#ae81ff">1</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> <span style="color:#a6e22e">x</span> &lt; <span style="color:#ae81ff">0</span> {
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">sign</span> = <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">remaining</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">x</span> <span style="color:#f92672">*</span> <span style="color:#a6e22e">sign</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">sum</span> <span style="color:#f92672">:=</span> <span style="color:#ae81ff">0</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">for</span> <span style="color:#a6e22e">remaining</span> <span style="color:#f92672">!=</span> <span style="color:#ae81ff">0</span> {
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">digit</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">remaining</span> <span style="color:#f92672">%</span> <span style="color:#ae81ff">10</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">remaining</span> <span style="color:#f92672">/=</span> <span style="color:#ae81ff">10</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#75715e">// check before multiplying</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span> <span style="color:#a6e22e">sum</span> &gt; <span style="color:#a6e22e">math</span>.<span style="color:#a6e22e">MaxInt32</span><span style="color:#f92672">/</span><span style="color:#ae81ff">10</span> <span style="color:#f92672">||</span> (<span style="color:#a6e22e">sum</span> <span style="color:#f92672">==</span> <span style="color:#a6e22e">math</span>.<span style="color:#a6e22e">MaxInt32</span><span style="color:#f92672">/</span><span style="color:#ae81ff">10</span> <span style="color:#f92672">&amp;&amp;</span> <span style="color:#a6e22e">digit</span> &gt; <span style="color:#ae81ff">7</span>) {
+</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">return</span> <span style="color:#ae81ff">0</span>
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">sum</span> = <span style="color:#a6e22e">sum</span><span style="color:#f92672">*</span><span style="color:#ae81ff">10</span> <span style="color:#f92672">+</span> <span style="color:#a6e22e">digit</span>
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">sum</span> <span style="color:#f92672">*</span> <span style="color:#a6e22e">sign</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>The cleaner approach is using a trick is to <strong>build the reversed number digit by digit and check overflow before each multiplication</strong>:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#66d9ef">func</span> <span style="color:#a6e22e">reverse</span>(<span style="color:#a6e22e">x</span> <span style="color:#66d9ef">int</span>) <span style="color:#66d9ef">int</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">result</span> <span style="color:#f92672">:=</span> <span style="color:#ae81ff">0</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">for</span> <span style="color:#a6e22e">x</span> <span style="color:#f92672">!=</span> <span style="color:#ae81ff">0</span> {
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">digit</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">x</span> <span style="color:#f92672">%</span> <span style="color:#ae81ff">10</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">x</span> <span style="color:#f92672">/=</span> <span style="color:#ae81ff">10</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#75715e">// check before result*10 overflows</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span> <span style="color:#a6e22e">result</span> &gt; <span style="color:#a6e22e">math</span>.<span style="color:#a6e22e">MaxInt32</span><span style="color:#f92672">/</span><span style="color:#ae81ff">10</span> <span style="color:#f92672">||</span> (<span style="color:#a6e22e">result</span> <span style="color:#f92672">==</span> <span style="color:#a6e22e">math</span>.<span style="color:#a6e22e">MaxInt32</span><span style="color:#f92672">/</span><span style="color:#ae81ff">10</span> <span style="color:#f92672">&amp;&amp;</span> <span style="color:#a6e22e">digit</span> &gt; <span style="color:#ae81ff">7</span>) {
+</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">return</span> <span style="color:#ae81ff">0</span>
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span> <span style="color:#a6e22e">result</span> &lt; <span style="color:#a6e22e">math</span>.<span style="color:#a6e22e">MinInt32</span><span style="color:#f92672">/</span><span style="color:#ae81ff">10</span> <span style="color:#f92672">||</span> (<span style="color:#a6e22e">result</span> <span style="color:#f92672">==</span> <span style="color:#a6e22e">math</span>.<span style="color:#a6e22e">MinInt32</span><span style="color:#f92672">/</span><span style="color:#ae81ff">10</span> <span style="color:#f92672">&amp;&amp;</span> <span style="color:#a6e22e">digit</span> &lt; <span style="color:#f92672">-</span><span style="color:#ae81ff">8</span>) {
+</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">return</span> <span style="color:#ae81ff">0</span>
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">result</span> = <span style="color:#a6e22e">result</span><span style="color:#f92672">*</span><span style="color:#ae81ff">10</span> <span style="color:#f92672">+</span> <span style="color:#a6e22e">digit</span>
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">result</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><strong>Why <code>digit &gt; 7</code> and <code>digit &lt; -8</code>?</strong></p>
+<p><code>math.MaxInt32</code> is <code>2147483647</code> -&gt; the last digit is <code>7</code>. So if <code>result</code> is already at <code>MaxInt32/10 = 214748364</code>, any digit &gt; 7 would push it over. Similarly <code>math.MinInt32</code> is <code>-2147483648</code> -&gt; the last digit is <code>8</code> (in magnitude), so the bound is <code>-8</code>.</p>
+<p><strong>Negative numbers work automatically</strong> because Go&rsquo;s <code>%</code> operator preserves the sign of the dividend . For example: <code>-123 % 10 = -3</code>, so digits come out negative and the result accumulates correctly with the same logic.</p>
+<p><strong>The key insight to internalize:</strong> whenever a problem says &ldquo;check for overflow,&rdquo; the pattern is to check <em>before</em> the operation that would overflow, not after. Here that means checking before <code>result*10 + digit</code> rather than after.</p>
+<h3 id="3751-total-waviness-of-numbers-in-range-i">3751. Total Waviness of Numbers in Range I</h3>
+<p><a href="https://leetcode.com/problems/total-waviness-of-numbers-in-range-i/">Problem&rsquo;s link</a></p>
+<pre tabindex="0"><code>You are given two integers `num1` and `num2` representing an inclusive range [num1, num2].
+
+The &#34;waviness&#34; of a number is defined as the total count of its &#34;peaks&#34; and &#34;valleys&#34;:
+
+- A digit is a &#34;peak&#34; if it is strictly greater than both of its immediate neighbors.
+- A digit is a &#34;valley&#34; if it is strictly less than both of its immediate neighbors.
+- The first and last digits of a number cannot be peaks or valleys.
+- Any number with fewer than 3 digits has a waviness of 0.
+
+Return the total sum of waviness for all numbers in the range [num1, num2].
+
+Example 1:
+Input: num1 = 120, num2 = 130
+Output: 3
+Explanation:
+- In the range [120, 130]:
+	- 120: middle digit 2 is a peak, waviness = 1.
+	- 121: middle digit 2 is a peak, waviness = 1.
+	- 130: middle digit 3 is a peak, waviness = 1.
+	- All other numbers in the range have a waviness of 0.
+- Thus, total waviness is 1 + 1 + 1 = 3.
+
+Example 2:
+Input: num1 = 198, num2 = 202
+Output: 3
+Explanation:
+- In the range [198, 202]:
+	- 198: middle digit 9 is a peak, waviness = 1.
+	- 201: middle digit 0 is a valley, waviness = 1.
+	- 202: middle digit 0 is a valley, waviness = 1.
+	- All other numbers in the range have a waviness of 0.
+- Thus, total waviness is 1 + 1 + 1 = 3.
+
+Example 3:
+Input: num1 = 4848, num2 = 4848
+Output: 2
+Explanation:
+- Number 4848: the second digit 8 is a peak, and the third digit 4 is a valley, giving a waviness of 2.
+
+Constraints:
+- 1 &lt;= num1 &lt;= num2 &lt;= 10^5
+</code></pre><p>We can build digits by repeatedly taking <code>% 10</code>, which gives us digits in LSF order: For <code>120</code>, we&rsquo;ll get <code>[0, 2, 1]</code> instead of <code>[1, 2, 0]</code>. The peak/valley check will still works here, reversing doesn&rsquo;t change whether a middle digit is a peak/valley.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#66d9ef">func</span> <span style="color:#a6e22e">totalWaviness</span>(<span style="color:#a6e22e">num1</span> <span style="color:#66d9ef">int</span>, <span style="color:#a6e22e">num2</span> <span style="color:#66d9ef">int</span>) <span style="color:#66d9ef">int</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">total</span> <span style="color:#f92672">:=</span> <span style="color:#ae81ff">0</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">for</span> <span style="color:#a6e22e">n</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">num1</span>; <span style="color:#a6e22e">n</span> <span style="color:#f92672">&lt;=</span> <span style="color:#a6e22e">num2</span>; <span style="color:#a6e22e">n</span><span style="color:#f92672">++</span> {
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">number</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">n</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">digits</span> <span style="color:#f92672">:=</span> []<span style="color:#66d9ef">int</span>{}
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">for</span> <span style="color:#a6e22e">number</span> &gt; <span style="color:#ae81ff">0</span> {
+</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">digits</span> = append(<span style="color:#a6e22e">digits</span>, <span style="color:#a6e22e">number</span><span style="color:#f92672">%</span><span style="color:#ae81ff">10</span>)
+</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">number</span> = <span style="color:#a6e22e">number</span> <span style="color:#f92672">/</span> <span style="color:#ae81ff">10</span>
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">waviness</span> <span style="color:#f92672">:=</span> <span style="color:#ae81ff">0</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span> len(<span style="color:#a6e22e">digits</span>) <span style="color:#f92672">&gt;=</span> <span style="color:#ae81ff">3</span> {
+</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">for</span> <span style="color:#a6e22e">i</span> <span style="color:#f92672">:=</span> <span style="color:#ae81ff">1</span>; <span style="color:#a6e22e">i</span> &lt; len(<span style="color:#a6e22e">digits</span>)<span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>; <span style="color:#a6e22e">i</span><span style="color:#f92672">++</span> {
+</span></span><span style="display:flex;"><span>                <span style="color:#a6e22e">peak</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">digits</span>[<span style="color:#a6e22e">i</span>] &gt; <span style="color:#a6e22e">digits</span>[<span style="color:#a6e22e">i</span><span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>] <span style="color:#f92672">&amp;&amp;</span> <span style="color:#a6e22e">digits</span>[<span style="color:#a6e22e">i</span>] &gt; <span style="color:#a6e22e">digits</span>[<span style="color:#a6e22e">i</span><span style="color:#f92672">+</span><span style="color:#ae81ff">1</span>]
+</span></span><span style="display:flex;"><span>                <span style="color:#a6e22e">valley</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">digits</span>[<span style="color:#a6e22e">i</span>] &lt; <span style="color:#a6e22e">digits</span>[<span style="color:#a6e22e">i</span><span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>] <span style="color:#f92672">&amp;&amp;</span> <span style="color:#a6e22e">digits</span>[<span style="color:#a6e22e">i</span>] &lt; <span style="color:#a6e22e">digits</span>[<span style="color:#a6e22e">i</span><span style="color:#f92672">+</span><span style="color:#ae81ff">1</span>]
+</span></span><span style="display:flex;"><span>                <span style="color:#66d9ef">if</span> <span style="color:#a6e22e">peak</span> <span style="color:#f92672">||</span> <span style="color:#a6e22e">valley</span> {
+</span></span><span style="display:flex;"><span>                    <span style="color:#a6e22e">waviness</span><span style="color:#f92672">++</span>
+</span></span><span style="display:flex;"><span>                }
+</span></span><span style="display:flex;"><span>            }
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">total</span> <span style="color:#f92672">+=</span> <span style="color:#a6e22e">waviness</span>
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">total</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>This approach has <strong>O((num2 - num1) * D)</strong> where D is the number of digits (at most 6 for 10^5). Given the constraint <code>num2 &lt;= 10^5</code>, the range is at most 100,000 numbers, each with at most 6 digits, so it&rsquo;s fast enough in practice. There&rsquo;s no fundamentally better algorithmic approach for this problem. We have to inspect every number. The brute force <em>is</em> the intended solution here.</p>
+<p>That said, there is another approach using <code>strconv.Itoa</code> that is worth knowing:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#66d9ef">func</span> <span style="color:#a6e22e">waviness</span>(<span style="color:#a6e22e">n</span> <span style="color:#66d9ef">int</span>) <span style="color:#66d9ef">int</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">s</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">strconv</span>.<span style="color:#a6e22e">Itoa</span>(<span style="color:#a6e22e">n</span>)
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">count</span> <span style="color:#f92672">:=</span> <span style="color:#ae81ff">0</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">for</span> <span style="color:#a6e22e">i</span> <span style="color:#f92672">:=</span> <span style="color:#ae81ff">1</span>; <span style="color:#a6e22e">i</span> &lt; len(<span style="color:#a6e22e">s</span>)<span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>; <span style="color:#a6e22e">i</span><span style="color:#f92672">++</span> {
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span> <span style="color:#a6e22e">s</span>[<span style="color:#a6e22e">i</span>] &gt; <span style="color:#a6e22e">s</span>[<span style="color:#a6e22e">i</span><span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>] <span style="color:#f92672">&amp;&amp;</span> <span style="color:#a6e22e">s</span>[<span style="color:#a6e22e">i</span>] &gt; <span style="color:#a6e22e">s</span>[<span style="color:#a6e22e">i</span><span style="color:#f92672">+</span><span style="color:#ae81ff">1</span>] {
+</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">count</span><span style="color:#f92672">++</span>
+</span></span><span style="display:flex;"><span>        } <span style="color:#66d9ef">else</span> <span style="color:#66d9ef">if</span> <span style="color:#a6e22e">s</span>[<span style="color:#a6e22e">i</span>] &lt; <span style="color:#a6e22e">s</span>[<span style="color:#a6e22e">i</span><span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>] <span style="color:#f92672">&amp;&amp;</span> <span style="color:#a6e22e">s</span>[<span style="color:#a6e22e">i</span>] &lt; <span style="color:#a6e22e">s</span>[<span style="color:#a6e22e">i</span><span style="color:#f92672">+</span><span style="color:#ae81ff">1</span>] {
+</span></span><span style="display:flex;"><span>            <span style="color:#a6e22e">count</span><span style="color:#f92672">++</span>
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">count</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>This is arguably the cleanest version. Digit order is naturally correct, no manual extraction needed, and byte comparison works correctly since <code>'0'</code>–<code>'9'</code> are ordered.</p>
+<h2 id="conclusion">Conclusion</h2>
+<p>Digits extraction have many tools. Pick the right one depending on the problem.</p>
+<table>
+  <thead>
+      <tr>
+          <th>Situation</th>
+          <th>Method</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>Order doesn&rsquo;t matter (digit sum, frequency)</td>
+          <td>LSF with running accumulator &ndash;&gt; no slice needed</td>
+      </tr>
+      <tr>
+          <td>Need digits as integers in correct order</td>
+          <td>Extract LSF &ndash;&gt; reverse in-place</td>
+      </tr>
+      <tr>
+          <td>Need to traverse/compare digits in order</td>
+          <td><code>strconv.Itoa</code>&ndash;&gt; skip extraction entirely</td>
+      </tr>
+      <tr>
+          <td>Avoid</td>
+          <td>Prepend <code>append([]int{d}, rest...)</code> &ndash;&gt; hidden O(D²) allocs</td>
+      </tr>
+  </tbody>
+</table>
+<h3 id="only-collect-into-a-slice-when-we-actually-need-to-index">Only collect into a slice when we actually need to index</h3>
+<p>In Leetcode #3300.  The naive approach&rsquo;s <code>minElement</code> is a good instinct. That habit generalizes: ask ourself <em>&ldquo;do we need to index these digits, or just consume them?&rdquo;</em> before reaching for a slice.</p>
+<h3 id="overflow-check-before-the-operation-not-after">Overflow: check before the operation, not after</h3>
+<p>Lesson from Leetcode #7 :
+The core rule: if an operation can overflow, check its inputs <strong>before</strong> executing it, not the result after.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#75715e">// wrong — overflow already happened</span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">sum</span> = <span style="color:#a6e22e">sum</span><span style="color:#f92672">*</span><span style="color:#ae81ff">10</span> <span style="color:#f92672">+</span> <span style="color:#a6e22e">digit</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">if</span> <span style="color:#a6e22e">sum</span> &gt; <span style="color:#a6e22e">math</span>.<span style="color:#a6e22e">MaxInt32</span> { <span style="color:#f92672">...</span> }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">// right — check before multiplying</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">if</span> <span style="color:#a6e22e">sum</span> &gt; <span style="color:#a6e22e">math</span>.<span style="color:#a6e22e">MaxInt32</span><span style="color:#f92672">/</span><span style="color:#ae81ff">10</span> <span style="color:#f92672">||</span> (<span style="color:#a6e22e">sum</span> <span style="color:#f92672">==</span> <span style="color:#a6e22e">math</span>.<span style="color:#a6e22e">MaxInt32</span><span style="color:#f92672">/</span><span style="color:#ae81ff">10</span> <span style="color:#f92672">&amp;&amp;</span> <span style="color:#a6e22e">digit</span> &gt; <span style="color:#ae81ff">7</span>) {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#ae81ff">0</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">sum</span> = <span style="color:#a6e22e">sum</span><span style="color:#f92672">*</span><span style="color:#ae81ff">10</span> <span style="color:#f92672">+</span> <span style="color:#a6e22e">digit</span>
+</span></span></code></pre></div><p>This applies beyond digit problems. Any time we&rsquo;re building up a number incrementally.</p>
+<h3 id="the-maxint32-boundary-digits-are-worth-memorizing">The <code>MaxInt32</code> boundary digits are worth memorizing</h3>
+<ul>
+<li><code>math.MaxInt32 = 2147483647</code> &ndash;&gt; last digit <strong>7</strong></li>
+<li><code>math.MinInt32 = -2147483648</code> &ndash;&gt; last digit <strong>-8</strong></li>
+</ul>
+<p>These show up in overflow checks often enough that recognizing them on sight saves time.</p>
+<h3 id="sign-separation-is-a-clean-pattern-for-signed-integer-problems">Sign separation is a clean pattern for signed integer problems</h3>
+<p>Isolate the sign upfront, work with the magnitude, reapply at the end. It simplifies both the logic and the overflow checks (positive bounds only).</p>
+
+  </article>
+  <nav id="mini-toc" aria-label="Table of contents">
+    
+  </nav>
+  <script>
+    (function () {
+      const toc = document.getElementById('mini-toc');
+      if (!toc) return;
+
+      
+      const headings = Array.from(
+        document.querySelectorAll('article h2, article h3')
+      );
+
+      if (headings.length === 0) return;
+
+      
+      headings.forEach((h) => {
+        
+        if (!h.id) {
+          h.id = h.textContent.trim()
+            .toLowerCase()
+            .replace(/[^\w\s-]/g, '')
+            .replace(/\s+/g, '-');
+        }
+
+        const a = document.createElement('a');
+        a.href = '#' + h.id;
+        a.textContent = h.textContent;
+        
+        if (h.tagName === 'H3') a.style.paddingLeft = '1rem';
+        toc.appendChild(a);
+      });
+
+      
+      const links = Array.from(toc.querySelectorAll('a'));
+
+      function onScroll() {
+        let current = headings[0];
+        for (const h of headings) {
+          if (h.getBoundingClientRect().top <= 120) {
+            current = h;
+          }
+        }
+        links.forEach((a) => {
+          a.classList.toggle('active', a.getAttribute('href') === '#' + current.id);
+        });
+      }
+
+      window.addEventListener('scroll', onScroll, { passive: true });
+      onScroll(); 
+    })();
+  </script>
+</main>
+
+<div class="comment">
+  <script src="https://utteranc.es/client.js" repo="rohmanhakim/rohmanhakim.github.io" issue-term="pathname"
+    theme="github-light" crossorigin="anonymous" async>
+    </script>
+</div>
+
+
+  <footer>
+  <script>
+  const btnSwitchTheme = document.getElementById("btn-switch-theme")
+
+  function getTheme() {
+    const cookies = Object.fromEntries(
+      document.cookie.split("; ").map(c => c.split("="))
+    );
+    return cookies.theme || "light";
+  }
+
+  function invertTheme(theme) {
+    return theme == "light" ? "dark" : "light"
+  }
+
+  function applyTheme(toTheme) {
+    btnSwitchTheme.textContent = "Switch to " + invertTheme(toTheme) + " theme"
+    document.querySelector("html").style = toTheme == "dark" ? "filter: invert(1);" : ""
+    neuralizeChildrenColor("img", toTheme)
+    neuralizeChildrenColor("button", toTheme)
+    neuralizeChildrenColor(".resume-download-button", toTheme)
+    neuralizeChildrenColor(".highlight", toTheme)
+  }
+
+  function neuralizeChildrenColor(child, toTheme) {
+    document.querySelectorAll(child).forEach(el => {
+      el.style = toTheme == "dark" ? "filter: invert(1);" : ""
+    })
+  }
+
+  btnSwitchTheme.addEventListener("click", (event) => {
+    const theme = getTheme()
+    const newTheme = invertTheme(theme)
+    document.cookie = "theme=" + newTheme + ";path=/"
+    applyTheme(newTheme)
+  })
+
+  applyTheme(getTheme())
+</script>
+<div class="footer-container">
+  <p>Copyright © 2026 <a href="/">Muhammad Arif Rohman Hakim</a></p>
+  <ul>
+    <li>
+      <a href="https://www.linkedin.com/in/rohmanhakim/">LinkedIn</a>
+    </li>
+    <li>
+      <a href="https://github.com/rohmanhakim/">GitHub</a>
+    </li>
+    <li>
+      <a href="/about">About</a>
+    </li>
+    <li>
+      <a href="/index.xml" title="RSS Feed">RSS</a>
+    </li>
+  </ul>
+</div>
+  
+  </footer>
+  </body>
+</html>

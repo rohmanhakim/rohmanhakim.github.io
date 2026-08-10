@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Running Agentic Coding for Free: My OpenRouter &#43; Cline Setup | Arif&#39;s Homepage</title>
+    <link rel="stylesheet" href="/css/style.css" />
+    <link rel="stylesheet" href="/css/fonts.css" />
+    
+  
+    <meta name="description" content="Guide to setting up free agentic coding in VS Code with OpenRouter and StepFun&#39;s step-3.5-flash model. Includes account creation, API setup, model selection, and comparisons with OpenAI and others. Ideal for developers seeking a no-cost intro to autonomous AI coding." />
+  
+  <link rel="stylesheet" href="/css/mini-toc.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Source+Sans+3:ital,wght@0,200..900;1,200..900&display=swap" rel="stylesheet">
+  
+
+<link rel="stylesheet" href="/css/custom.css">
+<link rel="stylesheet" href="/css/yahoo.css">
+
+
+<link rel="alternate" type="application/rss+xml" title="Arif&#39;s Homepage - RSS Feed" href="https://arifrohman.com/index.xml" />
+
+<link rel="alternate" type="application/rss+xml" title="Arif&#39;s Homepage - Posts RSS Feed" href="https://arifrohman.com/post/index.xml" />
+
+
+
+
+
+<script data-goatcounter="https://arifrohman.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
+<div class="header-container">
+  <h1><a href="/">Arif's Homepage</a></h1>
+  <ul>
+    <li>
+      <a href="https://www.linkedin.com/in/rohmanhakim/">LinkedIn</a>
+    </li>
+    <li>
+      <a href="https://github.com/rohmanhakim/">GitHub</a>
+    </li>
+    <li>
+      <a href="/about">About</a>
+    </li>
+    <li>
+      <a href="/index.xml" title="RSS Feed">RSS</a>
+    </li>
+  </ul>
+  <button id="btn-switch-theme">Switch to dark Theme</button>
+</div>
+  </head>
+
+  <body>
+
+<div class="article-meta">
+  <h1><span class="title">Running Agentic Coding for Free: My OpenRouter + Cline Setup</span></h1>
+  
+</div>
+
+<main>
+  <article>
+    <p>I&rsquo;ve been playing around with agentic coding lately, letting an AI work through coding tasks with minimal hand-holding, and recently stumbled onto a setup that&rsquo;s genuinely good and costs nothing to run. This post walks through exactly how I got it working, from zero to a working environment, in about ten minutes.</p>
+<p>No paid subscriptions. No API keys to manage. Just a few accounts and one surprisingly capable free model.</p>
+<hr>
+<h2 id="but-first-what-are-we-even-talking-about">But first, what are we even talking about?</h2>
+<p>Before diving into the steps, let me lay out the key terms, because this space moves fast and the jargon stacks up quickly.</p>
+<p><strong>LLM (Large Language Model)</strong> is the engine behind all of this. It&rsquo;s a type of AI model trained on massive amounts of text, capable of understanding and generating code, answering questions, and reasoning through problems. When people say &ldquo;AI coding assistant,&rdquo; there&rsquo;s an LLM doing the heavy lifting underneath.</p>
+<p><strong>Inference</strong> is what happens when you actually <em>use</em> an LLM: you send it a prompt (like a coding task), and it generates a response. Each inference costs compute resources, which is why providers typically charge per token (a token is roughly a word or a short chunk of text). Every time Cline asks the model to think or write code, that&rsquo;s an inference happening.</p>
+<p><strong>Context</strong> is everything the model can &ldquo;see&rdquo; at any given moment during a conversation: your prompt, the files you&rsquo;ve attached, the chat history so far, and any other information fed into it. The model has no memory between separate tasks. It only knows what&rsquo;s inside the current context. This is why feeding it the right files and information matters so much. If it&rsquo;s not in the context, the model doesn&rsquo;t know it exists.</p>
+<p><strong>Context window</strong> is the maximum amount of context a model can hold at once, measured in tokens. Think of it as the model&rsquo;s working memory. If your conversation grows beyond this limit, older parts get dropped. Step 3.5 Flash has a 256,000 token context window, (which is quite generous) but in a long agentic session with many files, it can fill up faster than you&rsquo;d expect. Cline (which we&rsquo;ll use later shortly) shows you a progress bar for this so you can keep an eye on it.</p>
+<p><strong>Model</strong> in this context refers to a specific LLM you&rsquo;re working with. Different models have different strengths, speeds, and costs. Think of them as different tools in your toolkit: you pick the right one for the job.</p>
+<p><strong>Agentic coding</strong> is the practice of giving an AI model a task  (sometimes a complex, multi-step one) and letting it work through it autonomously: reading files, writing code, running tests, and iterating, with minimal intervention from you. It&rsquo;s less &ldquo;autocomplete on steroids&rdquo; and more &ldquo;I have a junior dev who can actually finish tasks.&rdquo;</p>
+<p><strong>OpenRouter</strong> is a service that acts as a unified gateway to dozens of different LLM providers. Instead of signing up with each AI company separately, you connect to OpenRouter and pick from their catalog of models. Some are paid, some free. It handles routing your requests to the right backend provider. Think of it as an app store, but for AI models.</p>
+<p><strong>Cline</strong> is a VS Code extension that turns your editor into an agentic coding environment. It connects to an LLM (via a provider like OpenRouter) and can autonomously read your codebase, write and edit files, run commands, and iterate on problems. You give it a task, and it works through it step by step.</p>
+<p><strong>StepFun</strong> is a Chinese AI lab (full name: StepFun AI) that develops and open-sources their own family of large language models. Their models have been gaining traction recently due to competitive performance at lower cost.</p>
+<p><strong>Hallucination</strong> is when an LLM generates something that sounds confident and plausible, but is factually wrong or completely made up. In coding, this often shows up as invented function names, incorrect API usage, or logic that looks right at a glance but doesn&rsquo;t actually work. It&rsquo;s one of the more frustrating things you&rsquo;ll run into with weaker models, and one of the quickest ways to tell a good model from a bad one for your use case.</p>
+<hr>
+<h2 id="why-this-setup-works">Why this setup works</h2>
+<p>The key insight here is that OpenRouter occasionally offers certain models on a <strong>free tier</strong>, meaning zero cost per inference. Right now, one of those free models is <strong>Step 3.5 Flash</strong> from StepFun, and it&rsquo;s genuinely good.</p>
+<p>Step 3.5 Flash is built on a <strong>Mixture of Experts (MoE)</strong> architecture, a technique where the model has a large total parameter count (196B), but only activates a small subset (11B) for any given task. This makes it fast and efficient. It also has a generous 256,000 token context window, which is more than enough for most coding tasks.</p>
+<p>I&rsquo;ve been using it for a personal project involving <strong>concurrent Go code with mutex synchronization</strong> and long test scenarios using <code>--race</code> flags. For that kind of medium-complexity reasoning, Step 3.5 Flash handled it quite well, and it was noticeably faster than some paid models I tried on OpenRouter like Kimi or MiniMax.</p>
+<blockquote>
+<p><strong>A note on &ldquo;free&rdquo; models:</strong> Free tiers on OpenRouter can change. StepFun&rsquo;s model is free <em>right now</em>, but there&rsquo;s no guarantee it&rsquo;ll stay that way. My advice: take advantage of it while it lasts, and use it as a low-risk way to learn the agentic coding workflow before committing to a paid model later.</p>
+</blockquote>
+<hr>
+<h2 id="the-setup">The Setup</h2>
+<p>Here&rsquo;s the full process, start to finish. It should take around 10 minutes.</p>
+<h3 id="step-1-create-an-openrouter-account-and-set-up-billing">Step 1: Create an OpenRouter account and set up billing</h3>
+<p>Go to <a href="https://openrouter.ai/">openrouter.ai</a> and sign up for an account.</p>
+<p><a href="images/01-screenshot-of-openrouter-signup.avif">
+  <img src="images/01-screenshot-of-openrouter-signup.avif" alt="screenshot of OpenRouter signup/homepage">
+
+</a></p>
+<p>Once you&rsquo;re in, you&rsquo;ll need to set up billing. OpenRouter uses a <strong>top-up model</strong>: you add credits to your account, and those credits get consumed as you use paid models. Each inference draws down a small amount based on the model&rsquo;s pricing.</p>
+<p><strong>But here&rsquo;s the thing: for our setup, you won&rsquo;t actually be spending credits.</strong> Step 3.5 Flash is on the free tier, so no credits will be deducted. You still need to set up a payment method though. It&rsquo;s a required step to activate your account.</p>
+<p><a href="images/02-openrouter-billing-payment-setup-page.avif">
+  <img src="images/02-openrouter-billing-payment-setup-page.avif" alt="screenshot of OpenRouter billing/payment setup page">
+
+</a></p>
+<p>To set up billing, you&rsquo;ll need a credit or debit card. OpenRouter will charge a small authorization hold (a few dollars or less) to verify the card (this is completely standard for any online payment platform, and it will be released back to you. It&rsquo;s not an actual charge).</p>
+<blockquote>
+<p><strong>For Indonesian readers:</strong> If you don&rsquo;t have a physical credit/debit card, <strong>Jenius e-card</strong> works perfectly here. It&rsquo;s a virtual card you can set up through the Jenius app. Just make sure you have some balance on it, enough to cover the small authorization hold. Once that clears, you&rsquo;re good to go.</p>
+</blockquote>
+<p><a href="images/03-billing-setup-with-payment-method-field.avif">
+  <img src="images/03-billing-setup-with-payment-method-field.avif" alt="screenshot of the billing setup with payment method field">
+
+</a></p>
+<p>Once billing is set up, you need to create an <strong>API key</strong>. An API key is a unique string that lets other tools, like Cline, authenticate with OpenRouter on your behalf, so they can make requests to the models without you logging in each time. Go to <a href="https://openrouter.ai/settings/keys">openrouter.ai/settings/keys</a> and create a new key.</p>
+<p><a href="images/04-openrouter-api-key-creation-page.avif">
+  <img src="images/04-openrouter-api-key-creation-page.avif" alt="screenshot of the OpenRouter API key creation page">
+
+</a></p>
+<p>You&rsquo;ll see four fields to fill in:</p>
+<p><strong>Name</strong> - just a label for yourself. Something like <code>cline-personal</code> works fine.</p>
+<p><strong>Credit Limit</strong> - this caps how much spend this key is allowed before it stops working. For our setup it doesn&rsquo;t matter since Step 3.5 Flash is free, but if you plan to experiment with paid models later, setting a limit here is a good guardrail so you don&rsquo;t accidentally burn through credits. Leave it blank for no limit.</p>
+<p><strong>Reset Limit every&hellip;</strong> - if you set a credit limit, this controls how often it resets. Options like daily or weekly are available, all resetting at midnight UTC. If you want a hard total cap that never resets, pick &ldquo;N/A&rdquo;. If you left the credit limit blank, this doesn&rsquo;t apply.</p>
+<p><strong>Expiration</strong> - when the key should stop working. Pick &ldquo;No expiration&rdquo; for a key that stays active indefinitely.</p>
+<p>For my setup, I left the credit limit blank and set no expiration, simple and low-maintenance. But again, if you&rsquo;re planning to try paid models down the line, I&rsquo;d recommend adding a credit limit as a safety net.</p>
+<p><strong>Important: once you create the key, copy it and store it somewhere safe.</strong> OpenRouter will not show it to you again. You&rsquo;ll need it in a later step when configuring Cline.</p>
+<p><a href="images/05-newly-created-api-key-with-the-copy-button.avif">
+  <img src="images/05-newly-created-api-key-with-the-copy-button.avif" alt="screenshot of the newly created API key with the copy button">
+
+</a></p>
+<h3 id="step-2-download-and-install-visual-studio-code">Step 2: Download and install Visual Studio Code</h3>
+<p>If you don&rsquo;t already have it, grab <a href="https://code.visualstudio.com/">VS Code</a> from the official site. It&rsquo;s free and available for Windows, macOS, and Linux.</p>
+<p><a href="images/06-vscode-download-page.avif">
+  <img src="images/06-vscode-download-page.avif" alt="screenshot of VS Code download page">
+
+</a></p>
+<h3 id="step-3-install-the-cline-extension">Step 3: Install the Cline extension</h3>
+<p>Open VS Code, go to the <strong>Extensions</strong> panel (the puzzle piece icon on the left sidebar, or press <code>Ctrl+Shift+X</code>), and search for <strong>Cline</strong>.</p>
+<p><a href="images/07-vscode-extensions-panel-with-cline-search-result.avif">
+  <img src="images/07-vscode-extensions-panel-with-cline-search-result.avif" alt="screenshot of VS Code Extensions panel with Cline search result">
+
+</a></p>
+<p>Install it, then open the extension on the left panel. You&rsquo;ll be prompted &ldquo;How will you use Cline?&rdquo;, ignore this for now and click &ldquo;Login to Cline&rdquo;, you&rsquo;ll be prompted to SignUp for Cline account, go ahead and do that. This is just to activate the extension and give it a session history feature. No billing or payment is needed on Cline&rsquo;s side, because we&rsquo;re going to point it at OpenRouter for the actual model.</p>
+<p><a href="images/08a-cline-after-installation.avif">
+  <img src="images/08a-cline-after-installation.avif" alt="screenshot of Cline after installation">
+
+</a></p>
+<p><a href="images/08b-cline-activation-account-creation.avif">
+  <img src="images/08b-cline-activation-account-creation.avif" alt="screenshot of Cline activation/account creation">
+
+</a></p>
+<p><a href="images/08c-cline-authorization-vscode.avif">
+  <img src="images/08c-cline-authorization-vscode.avif" alt="screenshot of Cline authorization in VS Code">
+
+</a></p>
+<h3 id="step-4-configure-cline-to-use-openrouter">Step 4: Configure Cline to use OpenRouter</h3>
+<p>This is where everything gets connected. Once Cline is installed and activated, click the <strong>gear icon</strong> in the top-right corner of the Cline sidebar to open its settings.</p>
+<p><a href="images/09-gear-icon-in-the-top-right-of-the-cline-sidebar.avif">
+  <img src="images/09-gear-icon-in-the-top-right-of-the-cline-sidebar.avif" alt="screenshot of the gear icon in the top-right of the Cline sidebar">
+
+</a></p>
+<p>You&rsquo;ll see a configuration form with several fields. Fill them in as follows:</p>
+<p><strong>API Provider</strong>: select <code>OpenRouter</code> from the dropdown. This tells Cline to route all model requests through OpenRouter instead of talking to a provider directly.</p>
+<p><a href="images/10-api-provider-dropdown-with-openrouter-selected.avif">
+  <img src="images/10-api-provider-dropdown-with-openrouter-selected.avif" alt="screenshot of the API Provider dropdown with OpenRouter selected">
+
+</a></p>
+<p><strong>OpenRouter API Key</strong>: paste the API key you copied in Step 1 here. This is how Cline authenticates with OpenRouter on your behalf.</p>
+<p><a href="images/11-api-key-field-with-the-key-pasted-in.avif">
+  <img src="images/11-api-key-field-with-the-key-pasted-in.avif" alt="screenshot of the API Key field with the key pasted in">
+
+</a></p>
+<p><strong>Model</strong>: select or type <code>stepfun/step-3.5-flash:free</code>. This is the specific model Cline will use for all your tasks.</p>
+<p><a href="images/12-model-field-with-stepfun-step-35-flashfree-entered.avif">
+  <img src="images/12-model-field-with-stepfun-step-35-flashfree-entered.avif" alt="screenshot of the Model field with stepfun/step-3.5-flash:free entered">
+
+</a></p>
+<p><strong>Enable Thinking (1024 tokens)</strong>: check this box. Step 3.5 Flash is a reasoning model, meaning it has the ability to &ldquo;think&rdquo; internally before generating its response, working through the problem step by step before writing code. When this is enabled, Cline allocates a budget of 1024 reasoning tokens for that internal thinking process. It can improve the quality of the model&rsquo;s output, especially on trickier tasks. The 1024 token budget is Cline&rsquo;s minimum. It&rsquo;s a small amount and won&rsquo;t noticeably affect performance on the free tier.</p>
+<p><a href="images/13-enable-thinking-checkbox-checked.avif">
+  <img src="images/13-enable-thinking-checkbox-checked.avif" alt="screenshot of the Enable Thinking checkbox checked">
+
+</a></p>
+<p>Once all the fields are filled in, click the <strong>Done</strong> button at the top of the Cline sidebar. That&rsquo;s it. Cline is now fully wired up to Step 3.5 Flash via OpenRouter.</p>
+<p><a href="images/14a-done-button-at-the-top-of-the-cline-sidebar.avif">
+  <img src="images/14a-done-button-at-the-top-of-the-cline-sidebar.avif" alt="screenshot of the Done button at the top of the Cline sidebar">
+
+</a></p>
+<p>At the <strong>bottom of the Cline sidebar</strong>, you&rsquo;ll see something like <code>openrouter:stepfun/step-3.5-flash:free</code>. This is a model selector. In case you want to change to another model later, you can click on the model selector there.</p>
+<p><a href="images/14b-model-selector-at-the-bottom-of-cline-sidebar.avif">
+  <img src="images/14b-model-selector-at-the-bottom-of-cline-sidebar.avif" alt="screenshot of the model selector at the bottom of Cline sidebar">
+
+</a></p>
+<h3 id="step-5-try-it-out">Step 5: Try it out</h3>
+<p>Open a project in VS Code, open the Cline panel, and make sure you&rsquo;re in <strong>Plan mode</strong> (more on that below). Give it a task. Something like:</p>
+<blockquote>
+<p><em>&ldquo;Add input validation to the user registration function and write unit tests for it.&rdquo;</em></p>
+</blockquote>
+<p>The model will read your code, reason through the task, and lay out a plan for you to review before it touches anything. The rest of the workflow (how Plan and Act mode work, how to give it context, and how to keep an eye on your usage) is covered in the next section.</p>
+<hr>
+<h2 id="a-quick-look-at-the-model-landscape-for-context">A quick look at the model landscape (for context)</h2>
+<p>You might wonder why Step 3.5 Flash and not something else. Here&rsquo;s a rough picture of what&rsquo;s out there, some of these I tested through OpenRouter + Cline, others I compared against using a different setup (more on that below):</p>
+<table>
+  <thead>
+      <tr>
+          <th>Model</th>
+          <th>Provider</th>
+          <th>Cost</th>
+          <th>Speed</th>
+          <th>Good for</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td><strong>Step 3.5 Flash</strong></td>
+          <td>StepFun</td>
+          <td>Free</td>
+          <td>Fast</td>
+          <td>Medium-complexity coding, general tasks</td>
+      </tr>
+      <tr>
+          <td><strong>Gemini 2.5 Flash</strong></td>
+          <td>Google</td>
+          <td>Paid</td>
+          <td>Fast</td>
+          <td>Medium-complexity coding</td>
+      </tr>
+      <tr>
+          <td><strong>Claude Sonnet 4.5</strong></td>
+          <td>Anthropic</td>
+          <td>Paid</td>
+          <td>Moderate</td>
+          <td>Medium-complexity coding</td>
+      </tr>
+      <tr>
+          <td><strong>Gemini 3</strong></td>
+          <td>Google</td>
+          <td>Paid</td>
+          <td>Moderate</td>
+          <td>Complex, multi-step tasks</td>
+      </tr>
+      <tr>
+          <td><strong>Kimi 2.5</strong></td>
+          <td>Moonshot AI</td>
+          <td>Paid</td>
+          <td>Moderate</td>
+          <td>Complex reasoning, hard problems</td>
+      </tr>
+      <tr>
+          <td><strong>Kimi 2 Thinking</strong></td>
+          <td>Moonshot AI</td>
+          <td>Paid</td>
+          <td>Moderate</td>
+          <td>Deep reasoning, medium problems</td>
+      </tr>
+      <tr>
+          <td><strong>MiniMax M2.1</strong></td>
+          <td>MiniMax</td>
+          <td>Paid</td>
+          <td>Moderate</td>
+          <td>General-purpose tasks</td>
+      </tr>
+      <tr>
+          <td><strong>GPT-5-Nano</strong></td>
+          <td>OpenAI</td>
+          <td>Low cost</td>
+          <td>Fast</td>
+          <td>Lightweight tasks</td>
+      </tr>
+      <tr>
+          <td><strong>Gemini 2.5 Flash Lite</strong></td>
+          <td>Google</td>
+          <td>Low cost</td>
+          <td>Fast</td>
+          <td>Lightweight tasks</td>
+      </tr>
+  </tbody>
+</table>
+<p><strong>Kimi</strong> is developed by Moonshot AI, a Chinese AI startup. Their &ldquo;Thinking&rdquo; variants are models tuned for extended reasoning. They take longer but can handle harder problems.</p>
+<p><strong>MiniMax</strong> is another Chinese AI company with a range of models across different sizes and capabilities.</p>
+<p><strong>GPT-5-Nano</strong> is OpenAI&rsquo;s smallest, cheapest model in the GPT-5 family, designed to be fast and low-cost for simpler tasks.</p>
+<p><strong>Gemini 2.5 Flash Lite</strong> is Google&rsquo;s budget-tier model from the Gemini 2.5 line, similarly positioned for lightweight, cost-effective inference.</p>
+<p><strong>Claude Sonnet 4.5</strong> is Anthropic&rsquo;s mid-tier model, solid at coding and reasoning tasks.</p>
+<p><strong>Gemini 3</strong> is Google&rsquo;s latest flagship model, a step up in capability from the 2.5 line.</p>
+<p>I actually tried GPT-5-Nano and Gemini 2.5 Flash Lite before settling on this setup, but on a different tool at the time. I was using <strong>Zed Editor</strong>&rsquo;s built-in AI coding feature, which lets you connect to various models directly without Cline. For the same level of task I was throwing at Step 3.5 Flash, both GPT-5-Nano and Gemini 2.5 Flash Lite hallucinated noticeably more. They&rsquo;d generate code that looked reasonable on the surface but used wrong APIs, invented functions that don&rsquo;t exist, or got the logic subtly wrong in ways that only surfaced when you actually ran the tests. Step 3.5 Flash was significantly more reliable for the same kind of work. And again, it&rsquo;s free.</p>
+<p>From my experience across both setups, the models roughly shake out into tiers. Step 3.5 Flash sits in the same ballpark as Gemini 2.5 Flash and Claude Sonnet 4.5. All three handled medium-complexity tasks with similar reliability. Above them is a noticeable step up: Gemini 3 and Kimi 2.5 Thinking, which I reached for when tasks got more complex and needed stronger reasoning. So Step 3.5 Flash isn&rsquo;t just &ldquo;good enough for free&rdquo;, it&rsquo;s actually competitive with paid models at its tier. The question is only whether your tasks eventually outgrow that tier.</p>
+<p>For my use case (medium-level reasoning on real codebases) Step 3.5 Flash hit the sweet spot: fast, capable, and free. If you eventually hit its limits on harder tasks, the paid models are worth exploring, but I&rsquo;d start here.</p>
+<hr>
+<h2 id="how-i-actually-use-this-setup">How I actually use this setup</h2>
+<p>It&rsquo;s worth setting expectations here. Agentic coding with current LLMs isn&rsquo;t magic. The model will sometimes misunderstand what you want, go down the wrong path, or need a nudge. But the gap between &ldquo;AI autocomplete&rdquo; and &ldquo;AI that can actually work through a task&rdquo; is real, and Cline&rsquo;s workflow is designed around that gap pretty well. Here&rsquo;s how I use it day to day.</p>
+<h3 id="plan-mode-vs-act-mode">Plan mode vs Act mode</h3>
+<p>The single most important thing to understand about Cline is that it has two modes: <strong>Plan</strong> and <strong>Act</strong>. You toggle between them in the <strong>bottom-right corner</strong> of the Cline extension panel.</p>
+<p><a href="images/15-plan-Act-toggle-in-the-bottom-right-corner-of-cline.avif">
+  <img src="images/15-plan-Act-toggle-in-the-bottom-right-corner-of-cline.avif" alt="screenshot of the Plan/Act toggle in the bottom-right corner of Cline">
+
+</a></p>
+<p>In <strong>Plan mode</strong>, the model cannot touch your files. It can read them, but it won&rsquo;t write or modify anything. This is where you do the thinking together with the model. You describe what you want, and the model breaks it down into a concrete, sequential plan: the steps it would take to actually execute the task.</p>
+<p><a href="images/15b-plan-mode.avif">
+  <img src="images/15b-plan-mode.avif" alt="screenshot of Cline plan mode">
+
+</a></p>
+<p><a href="images/15c-plan-mode-2.avif">
+  <img src="images/15c-plan-mode-2.avif" alt="screenshot of Cline plan mode">
+
+</a></p>
+<p>This is where the real value is, honestly. Before the model writes a single line of code, you get to look at its plan and say &ldquo;no, that&rsquo;s wrong, do it this way instead.&rdquo; You can go back and forth with it, refine the plan, poke holes in it. It&rsquo;s like reviewing a design doc before someone starts coding. Only when you&rsquo;re happy with the plan do you move on.</p>
+<h3 id="giving-the-model-context">Giving the model context</h3>
+<p>The model can only work with what it knows about your project, so feeding it the right context matters. This is one of the things that separates decent results from great ones. If you just type &ldquo;fix the bug&rdquo; without pointing the model at the relevant files, it&rsquo;s guessing. Point it at the right files, and suddenly it can actually reason about your code. The difference in output quality is noticeable.</p>
+<p>Cline gives you two ways to do this.</p>
+<p>The first is the <code>@</code> mention. Type <code>@</code> in the prompt message box and you can point the model at specific files in your project. If you&rsquo;re working on a bug in <code>auth/handler.go</code>, just type <code>@auth/handler.go</code> and it&rsquo;ll pull that file into the conversation.</p>
+<p><a href="images/16-the-at-mention-file-picker-in-the-cline-prompt-box.avif">
+  <img src="images/16-the-at-mention-file-picker-in-the-cline-prompt-box.avif" alt="screenshot of the @ mention file picker in the Cline prompt box">
+
+</a></p>
+<p>The second is the <code>+</code> button at the bottom of the prompt message box. This lets you add external context (things outside your project) that are relevant, like documentation or reference material.</p>
+<p><a href="images/17-plus-button-and-its-options-at-the-bottom-of-the-cline-prompt-box.avif">
+  <img src="images/17-plus-button-and-its-options-at-the-bottom-of-the-cline-prompt-box.avif" alt="screenshot of the &#43; button and its options at the bottom of the Cline prompt box">
+
+</a></p>
+<h3 id="from-plan-to-execution">From plan to execution</h3>
+<p>Once you&rsquo;re satisfied with the plan, toggle over to <strong>Act mode</strong>. If a plan has already been generated in Plan mode, the model starts executing it immediately, no additional prompt needed. It just goes.</p>
+<p><a href="images/17b-act-mode.avif">
+  <img src="images/17b-act-mode.avif" alt="screenshot of Cline act mode">
+
+</a></p>
+<p>As it works, Cline opens a diff view in your editor that looks like VS Code&rsquo;s built-in git diff, the familiar red and green line-by-line comparison. The title bar will say <strong>&ldquo;Cline&rsquo;s Changes&rdquo;</strong> so you know what you&rsquo;re looking at. You can watch the model&rsquo;s progress in real time as it edits files.</p>
+<p><a href="images/18-cline-changes-diff-view-while-the-model-is-working.gif">
+  <img src="images/18-cline-changes-diff-view-while-the-model-is-working.gif" alt="screenshot of the Cline Changes diff view while the model is working">
+
+</a></p>
+<h3 id="approvals-and-permissions">Approvals and permissions</h3>
+<p>Here&rsquo;s an important detail: <strong>the model can&rsquo;t save anything without your say-so.</strong> After it makes changes to a file, Cline will prompt you to review and click <strong>Save</strong> to confirm. This is by design, you&rsquo;re the last checkpoint before anything actually gets written to disk.</p>
+<p>The same applies to running commands. If the model wants to execute something on the command line (like running tests), it&rsquo;ll ask for your approval first before doing so.</p>
+<p><a href="images/19-cline-save-confirmation-prompt.avif">
+  <img src="images/19-cline-save-confirmation-prompt.avif" alt="screenshot of the Cline Save confirmation prompt">
+
+</a></p>
+<p>That said, if you find yourself clicking Save on every single small change and it&rsquo;s slowing you down, you can adjust this. At the top of the prompt message box, there&rsquo;s an <strong>Auto-approve</strong> setting. You can configure which actions the model is allowed to do without asking. Saving files, running specific commands, and so on. I&rsquo;d recommend keeping it conservative when you&rsquo;re starting out, and loosening it once you get a feel for how the model behaves.</p>
+<p><a href="images/20-auto-approve-configuration-area.avif">
+  <img src="images/20-auto-approve-configuration-area.avif" alt="screenshot of the Auto-approve configuration area">
+
+</a></p>
+<h3 id="watching-your-token-usage-and-cost">Watching your token usage and cost</h3>
+<p>At the very top of the Cline extension, you&rsquo;ll see a <strong>progress bar</strong> showing your context usage for the current task. This tracks the total tokens consumed, both input (what you and the model have said) and output (what the model has generated), against the maximum context window allowed by the model. For Step 3.5 Flash, that&rsquo;s 256K tokens.</p>
+<p>This bar <strong>resets every time you start a new task</strong>, so each conversation in Cline is its own isolated session.</p>
+<p><a href="images/21-token-context-usage-progress-bar-at-the-top-of-the-cline-extension.avif">
+  <img src="images/21-token-context-usage-progress-bar-at-the-top-of-the-cline-extension.avif" alt="screenshot of the token context usage progress bar at the top of the Cline extension">
+
+</a></p>
+<p>Right above that bar, there&rsquo;s a <strong>cost counter</strong> showing how many dollars the current task has consumed on OpenRouter. For Step 3.5 Flash it&rsquo;ll stay at $0.00, but this becomes very useful once you start experimenting with paid models. It&rsquo;s the fastest way to keep an eye on your spend without having to log into OpenRouter every time.</p>
+<p><a href="images/22-cost-counter-above-the-token-usage-bar.avif">
+  <img src="images/22-cost-counter-above-the-token-usage-bar.avif" alt="screenshot of the cost counter above the token usage bar">
+
+</a></p>
+<h3 id="clinerules--giving-the-model-standing-instructions"><code>.clinerules</code> — giving the model standing instructions</h3>
+<p>One last thing that&rsquo;s made a big difference in my workflow: the <code>.clinerules</code> file. Place a file named exactly <code>.clinerules</code> in the <strong>root directory</strong> of your project, and whatever you write in it becomes a standing instruction that the model reads at the start of every task. It has to be in the root, as subdirectories won&rsquo;t work.</p>
+<p>Think of it like a README for the AI. You can put anything there that you&rsquo;d otherwise have to repeat every time: coding style preferences, project conventions, things to avoid, testing requirements. For example:</p>
+<ul>
+<li>Always use table-driven tests for Go code</li>
+<li>Never modify go.mod unless explicitly asked</li>
+<li>When writing mutex code, always pair Lock() with defer Unlock()</li>
+<li>Run go vet before finishing any task</li>
+</ul>
+<p>This is similar in spirit to <code>AGENTS.md</code> (used by some other AI coding tools) or Claude&rsquo;s project-level instructions. It&rsquo;s just Cline&rsquo;s version of the same idea.</p>
+<p><a href="images/23-clinerules-file-open-in-vscode.avif">
+  <img src="images/23-clinerules-file-open-in-vscode.avif" alt="screenshot of a .clinerules file open in VS Code">
+
+</a></p>
+<h3 id="when-the-model-isnt-enough">When the model isn&rsquo;t enough</h3>
+<p>One thing I appreciated about Cline: it&rsquo;s upfront when it thinks you might be hitting the limits of your chosen model. When I threw a more complex task at it recently, Cline popped up with this warning:</p>
+<blockquote>
+<p><em>Cline uses complex prompts and iterative task execution that may be challenging for less capable models. For best results, it&rsquo;s recommended to use Claude 4 Sonnet for its advanced agentic coding capabilities.</em></p>
+</blockquote>
+<p><a href="images/24-cline-recommends-other-model-warning.avif">
+  <img src="images/24-cline-recommends-other-model-warning.avif" alt="screenshot of cline warning to switchto other models">
+
+</a></p>
+<p>It&rsquo;s a helpful nudge. It doesn&rsquo;t stop you from continuing. You can ignore it and keep going, but it&rsquo;s a signal that the task might be too heavy for the current model and you might want to swap to something more capable. If you start seeing this, it&rsquo;s worth considering whether to switch to a stronger (paid) model for that particular task. For the medium-complexity stuff Step 3.5 Flash handles well, you won&rsquo;t see it.</p>
+<h3 id="putting-it-all-together">Putting it all together</h3>
+<p>The workflow I&rsquo;ve settled into looks something like this: open a project, drop in some context with <code>@</code>, describe the task in Plan mode, review and tweak the plan until it looks right, toggle to Act, watch it work, approve the changes, and move on. For my personal project (go concurrency, mutex synchronization, long test scenarios with <code>--race</code> flags) Step 3.5 Flash would often nail the structure on the first or second pass. That&rsquo;s the kind of productivity gain that makes this whole setup worth the ten minutes it took to get running.</p>
+<hr>
+<h2 id="recap">Recap</h2>
+<ol>
+<li>Sign up on OpenRouter, set up billing, and create an API key (no actual spend needed for our setup)</li>
+<li>Install VS Code if you haven&rsquo;t already</li>
+<li>Install Cline from the VS Code extensions, create an account</li>
+<li>Configure Cline: set OpenRouter as the provider, paste your API key, select <code>stepfun/step-3.5-flash:free</code>, enable thinking</li>
+<li>Start giving it tasks and see how it goes</li>
+</ol>
+<p>The whole point of this post is to lower the barrier. You don&rsquo;t need a paid subscription, you don&rsquo;t need to understand the internals of how LLMs work, and the setup itself is straightforward. Just a few accounts and a handful of fields to fill in. Just follow these steps and you&rsquo;re coding with an AI agent in minutes.</p>
+<p>Give it a shot while Step 3.5 Flash is free. And if you want to share how it goes, or what models you end up preferring. I&rsquo;m always curious to hear.</p>
+<p>Thank&rsquo;s for reading, and happy coding!</p>
+
+  </article>
+  <nav id="mini-toc" aria-label="Table of contents">
+    
+  </nav>
+  <script>
+    (function () {
+      const toc = document.getElementById('mini-toc');
+      if (!toc) return;
+
+      
+      const headings = Array.from(
+        document.querySelectorAll('article h2, article h3')
+      );
+
+      if (headings.length === 0) return;
+
+      
+      headings.forEach((h) => {
+        
+        if (!h.id) {
+          h.id = h.textContent.trim()
+            .toLowerCase()
+            .replace(/[^\w\s-]/g, '')
+            .replace(/\s+/g, '-');
+        }
+
+        const a = document.createElement('a');
+        a.href = '#' + h.id;
+        a.textContent = h.textContent;
+        
+        if (h.tagName === 'H3') a.style.paddingLeft = '1rem';
+        toc.appendChild(a);
+      });
+
+      
+      const links = Array.from(toc.querySelectorAll('a'));
+
+      function onScroll() {
+        let current = headings[0];
+        for (const h of headings) {
+          if (h.getBoundingClientRect().top <= 120) {
+            current = h;
+          }
+        }
+        links.forEach((a) => {
+          a.classList.toggle('active', a.getAttribute('href') === '#' + current.id);
+        });
+      }
+
+      window.addEventListener('scroll', onScroll, { passive: true });
+      onScroll(); 
+    })();
+  </script>
+</main>
+
+<div class="comment">
+  <script src="https://utteranc.es/client.js" repo="rohmanhakim/rohmanhakim.github.io" issue-term="pathname"
+    theme="github-light" crossorigin="anonymous" async>
+    </script>
+</div>
+
+
+  <footer>
+  <script>
+  const btnSwitchTheme = document.getElementById("btn-switch-theme")
+
+  function getTheme() {
+    const cookies = Object.fromEntries(
+      document.cookie.split("; ").map(c => c.split("="))
+    );
+    return cookies.theme || "light";
+  }
+
+  function invertTheme(theme) {
+    return theme == "light" ? "dark" : "light"
+  }
+
+  function applyTheme(toTheme) {
+    btnSwitchTheme.textContent = "Switch to " + invertTheme(toTheme) + " theme"
+    document.querySelector("html").style = toTheme == "dark" ? "filter: invert(1);" : ""
+    neuralizeChildrenColor("img", toTheme)
+    neuralizeChildrenColor("button", toTheme)
+    neuralizeChildrenColor(".resume-download-button", toTheme)
+    neuralizeChildrenColor(".highlight", toTheme)
+  }
+
+  function neuralizeChildrenColor(child, toTheme) {
+    document.querySelectorAll(child).forEach(el => {
+      el.style = toTheme == "dark" ? "filter: invert(1);" : ""
+    })
+  }
+
+  btnSwitchTheme.addEventListener("click", (event) => {
+    const theme = getTheme()
+    const newTheme = invertTheme(theme)
+    document.cookie = "theme=" + newTheme + ";path=/"
+    applyTheme(newTheme)
+  })
+
+  applyTheme(getTheme())
+</script>
+<div class="footer-container">
+  <p>Copyright © 2026 <a href="/">Muhammad Arif Rohman Hakim</a></p>
+  <ul>
+    <li>
+      <a href="https://www.linkedin.com/in/rohmanhakim/">LinkedIn</a>
+    </li>
+    <li>
+      <a href="https://github.com/rohmanhakim/">GitHub</a>
+    </li>
+    <li>
+      <a href="/about">About</a>
+    </li>
+    <li>
+      <a href="/index.xml" title="RSS Feed">RSS</a>
+    </li>
+  </ul>
+</div>
+  
+  </footer>
+  </body>
+</html>
