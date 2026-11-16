@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+	<channel>
+		<title>Web-Search on Arif&#39;s Homepage</title>
+		<link>https://arifrohman.com/tags/web-search/</link>
+		<description>Recent content in Web-Search on Arif&#39;s Homepage</description>
+		<generator>Hugo</generator>
+		<language>en-us</language>
+		
+		
+		
+		
+			<lastBuildDate>Fri, 09 Oct 2026 00:00:00 +0000</lastBuildDate>
+		
+			<atom:link href="https://arifrohman.com/tags/web-search/index.xml" rel="self" type="application/rss+xml" />
+			<item>
+				<title>Setting Up the Search Backend for career-ops with Pi</title>
+				<link>https://arifrohman.com/post/setting-up-search-backend-for-career-ops-with-pi/</link>
+				<pubDate>Fri, 09 Oct 2026 00:00:00 +0000</pubDate>
+				<guid>https://arifrohman.com/post/setting-up-search-backend-for-career-ops-with-pi/</guid>
+				<description>Step-by-step guide to fixing and setting up the search backend tools for career-ops when running inside Pi. Starts from the missing piece most guides skip: the unipi extension (@pi-unipi/web-api) that actually provides Pi&amp;rsquo;s web tools, and how to install it with pi install. Then covers how its provider-based web_search ranks backends, diagnosing which providers are down or unconfigured, setting up wigolo as a free local search daemon, working around an ISP-level DNS hijack that silently breaks DuckDuckGo, wiring free Jina and Tavily API keys (including two upstream quirks that make them fail silently), and enabling the career-ops Tavily and Serper plugins through .env and plugins.mjs. Ends with a verification matrix. All on free tiers.</description>
+			</item>
+	</channel>
+</rss>

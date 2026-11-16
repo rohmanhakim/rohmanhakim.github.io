@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>How to Start a Cloudflare Workers Project with Cloudflare One Access in 2026 | Arif&#39;s Homepage</title>
+    <link rel="stylesheet" href="/css/style.css" />
+    <link rel="stylesheet" href="/css/fonts.css" />
+    
+  
+    <meta name="description" content="Start a Cloudflare Workers project the right way in 2026: scaffold with Vite, migrations with Drizzle on D1, tests running in workerd, and a Cloudflare One Access OTP gate in front — with every gotcha documented, from silent empty API responses to the vitest plugin crash." />
+  
+  <link rel="stylesheet" href="/css/mini-toc.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Source+Sans+3:ital,wght@0,200..900;1,200..900&display=swap" rel="stylesheet">
+  
+
+<link rel="stylesheet" href="/css/custom.css">
+<link rel="stylesheet" href="/css/yahoo.css">
+
+
+<link rel="alternate" type="application/rss+xml" title="Arif&#39;s Homepage - RSS Feed" href="https://arifrohman.com/index.xml" />
+
+<link rel="alternate" type="application/rss+xml" title="Arif&#39;s Homepage - Posts RSS Feed" href="https://arifrohman.com/post/index.xml" />
+
+
+
+
+
+<script data-goatcounter="https://arifrohman.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
+<div class="header-container">
+  <h1><a href="/">Arif's Homepage</a></h1>
+  <ul>
+    <li>
+      <a href="https://www.linkedin.com/in/rohmanhakim/">LinkedIn</a>
+    </li>
+    <li>
+      <a href="https://github.com/rohmanhakim/">GitHub</a>
+    </li>
+    <li>
+      <a href="/about">About</a>
+    </li>
+    <li>
+      <a href="/index.xml" title="RSS Feed">RSS</a>
+    </li>
+  </ul>
+  <button id="btn-switch-theme">Switch to dark Theme</button>
+</div>
+  </head>
+
+  <body>
+
+<div class="article-meta">
+  <h1><span class="title">How to Start a Cloudflare Workers Project with Cloudflare One Access in 2026</span></h1>
+  
+</div>
+
+<main>
+  <article>
+    <p>I recently started building a private, single-user web app and the requirements were short: one deployable, zero ops, and <strong>the app must never be reachable by anyone but me</strong>.</p>
+<p>My favorite stack that fits are:</p>
+<ul>
+<li><strong>one Cloudflare Worker</strong> serving both the static frontend and the API,</li>
+<li><strong>one D1 database</strong> (managed SQLite),</li>
+<li>and <strong>Cloudflare One Access</strong> with a One-time PIN in front of everything.</li>
+</ul>
+<p>It all sits on the free tier for a single user.</p>
+<p>This post is the setup guide I wish I&rsquo;d had. It walks through the whole path: scaffold, database, migrations, seed data, tests, the Access gate, deploy, CI and i will document every gotcha I actually hit, because almost every one of them failed silently or with a misleading error.</p>
+<blockquote>
+<p>This is a <em>single-user private deployment</em> guide. Cloudflare One Access has team-scale features (groups, SAML, device posture) that I deliberately don&rsquo;t use. Everything here runs on free tiers: Workers Free, D1 Free, and Access for Teams (free up to 50 users). The one thing you must not cheap out on is the gate itself — the whole point is that the app is never public.</p>
+</blockquote>
+<hr>
+<h2 id="what-we-are-talking-about">What we are talking about</h2>
+<p>Four terms carry the rest of the article.</p>
+<p><strong><a href="https://welcome.developers.workers.dev/">Cloudflare Workers</a></strong> is Cloudflare&rsquo;s serverless function runtime at the edge. In 2026 a Worker can also serve <strong>static assets</strong> (your built frontend) alongside its API routes, which means your whole app is one deployable: no separate hosting, no CORS, no second bill.</p>
+<p><strong><a href="https://developers.cloudflare.com/d1/">D1</a></strong> is Cloudflare&rsquo;s managed SQLite. There is no database file to manage. Schema ships as versioned SQL <strong>migrations</strong> applied with wrangler, and you query it from the Worker through a binding. Its limits (which we&rsquo;ll meet in Step 3) actively shape how you write importers.</p>
+<p><strong><a href="https://developers.cloudflare.com/cloudflare-one/access-controls/">Cloudflare One Access</a></strong> (the product formerly known as Cloudflare for Teams, living in the Zero Trust dashboard) is an identity-aware reverse proxy. You point it at a hostname, write an &ldquo;allow&rdquo; policy, and every request that isn&rsquo;t authenticated gets bounced to a login page <em>at the edge</em>, before your Worker runs. <strong>No in-app auth code at all</strong> and that&rsquo;s the appeal.</p>
+<p><strong>One-time PIN (OTP)</strong> is the simplest Access login method: type your email, get a 6-digit code, you&rsquo;re in. No <a href="https://en.wikipedia.org/wiki/Identity_provider">IdP</a> setup and passwords, good for exactly one human.</p>
+<h2 id="prerequisites">Prerequisites</h2>
+<ul>
+<li>
+<p>A Cloudflare account (free plan is fine).</p>
+</li>
+<li>
+<p><strong>Node 24+</strong> and npm. I used Node 24.13.</p>
+</li>
+<li>
+<p>A <strong>deliberately scoped API token</strong> for CI: from the dashboard, My Profile → API Tokens → Create Token, with exactly:</p>
+<ul>
+<li><code>D1 Read</code>, <code>D1 Write</code></li>
+<li><code>Workers Editor</code></li>
+<li><code>Access: Apps and Policies Read</code> + <code>Write</code></li>
+</ul>
+<p>Scope it to <strong>one account</strong>, and <strong>skip IP address filtering</strong>. GitHub Actions runners use dynamic IPs, so filtering would break CI for no security gain (the token only ever lives in your repo&rsquo;s secrets).</p>
+</li>
+<li>
+<p>Two secrets in GitHub (repo → Settings → Secrets and variables → Actions): <code>CLOUDFLARE_API_TOKEN</code> and <code>CLOUDFLARE_ACCOUNT_ID</code>. If you store them under an <em>environment</em> (e.g. <code>production</code>), only jobs that declare <code>environment: production</code> can read them. Remember that when you write the workflow.</p>
+</li>
+</ul>
+<h2 id="step-1-scaffold-with-vite-and-the-cloudflare-plugin">Step 1: Scaffold with Vite and the Cloudflare plugin</h2>
+<p>Create the project the way Cloudflare now recommends. Vite drives both the frontend build and the Worker build through <code>@cloudflare/vite-plugin</code>:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>mkdir my-app <span style="color:#f92672">&amp;&amp;</span> cd my-app
+</span></span><span style="display:flex;"><span>npm init -y
+</span></span><span style="display:flex;"><span>npm install hono                       <span style="color:#75715e"># API framework (you can pick your own)</span>
+</span></span><span style="display:flex;"><span>npm install -D vite @cloudflare/vite-plugin wrangler typescript
+</span></span></code></pre></div><p>The two config files that matter:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-ts" data-lang="ts"><span style="display:flex;"><span><span style="color:#75715e">// vite.config.ts
+</span></span></span><span style="display:flex;"><span><span style="color:#66d9ef">import</span> { <span style="color:#a6e22e">defineConfig</span> } <span style="color:#66d9ef">from</span> <span style="color:#e6db74">&#34;vite&#34;</span>;
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">import</span> { <span style="color:#a6e22e">cloudflare</span> } <span style="color:#66d9ef">from</span> <span style="color:#e6db74">&#34;@cloudflare/vite-plugin&#34;</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">export</span> <span style="color:#66d9ef">default</span> <span style="color:#a6e22e">defineConfig</span>({
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">plugins</span><span style="color:#f92672">:</span> [<span style="color:#a6e22e">cloudflare</span>({ <span style="color:#a6e22e">viteEnvironment</span><span style="color:#f92672">:</span> { <span style="color:#a6e22e">name</span><span style="color:#f92672">:</span> <span style="color:#e6db74">&#34;worker&#34;</span> } })],
+</span></span><span style="display:flex;"><span>});
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-toml" data-lang="toml"><span style="display:flex;"><span><span style="color:#75715e"># wrangler.toml</span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">name</span> = <span style="color:#e6db74">&#34;my-app&#34;</span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">main</span> = <span style="color:#e6db74">&#34;src/worker/index.ts&#34;</span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">compatibility_date</span> = <span style="color:#e6db74">&#34;2026-11-16&#34;</span>       <span style="color:#75715e"># use today&#39;s date</span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">compatibility_flags</span> = [<span style="color:#e6db74">&#34;nodejs_compat&#34;</span>]
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>[[<span style="color:#a6e22e">d1_databases</span>]]
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">binding</span> = <span style="color:#e6db74">&#34;DB&#34;</span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">database_name</span> = <span style="color:#e6db74">&#34;my-app&#34;</span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">database_id</span> = <span style="color:#e6db74">&#34;&lt;copied in Step 2&gt;&#34;</span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">migrations_dir</span> = <span style="color:#e6db74">&#34;drizzle/migrations&#34;</span>
+</span></span></code></pre></div><p><strong>Gotchas in this step:</strong></p>
+<ol>
+<li>
+<p><strong>Do not add an <code>[assets]</code> section to <code>wrangler.toml</code>.</strong> The Vite plugin builds your frontend into <code>dist/client</code> as &ldquo;standard build output&rdquo; and wrangler auto-detects it at deploy time. Configuring assets yourself fights the plugin.</p>
+</li>
+<li>
+<p><strong><code>wrangler types</code> generates <code>worker-configuration.d.ts</code></strong>. The <code>Env</code> type (<code>interface Env { DB: D1Database }</code>) plus the full Worker runtime types. <strong>Commit this file</strong> and add it to your ESLint ignores (it starts with <code>/* eslint-disable */</code> but still trips &ldquo;unused eslint-disable directive&rdquo; warnings). Then wire a check into CI:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>npx wrangler types --check   <span style="color:#75715e"># fails if the committed file is stale</span>
+</span></span></code></pre></div><p>Re-run <code>npx wrangler types</code> whenever <code>wrangler.toml</code> bindings change. In <code>tsconfig.json</code>, include the generated file and add <code>&quot;types&quot;: [&quot;vite/client&quot;]</code>.</p>
+</li>
+<li>
+<p><code>vite dev</code> starts a local <strong>workerd</strong> (the same runtime production uses) with a local D1 database. Your API routes and static frontend both work at <code>localhost</code> immediately.</p>
+</li>
+</ol>
+<h2 id="step-2-d1-database-and-drizzle-migrations">Step 2: D1 database and Drizzle migrations</h2>
+<p>Create the database (this is a one-time remote operation, and it prints the id you need):</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>npx wrangler d1 create my-app
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># ✅ Successfully created DB &#39;my-app&#39; in region APAC</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># &#34;database_id&#34;: &#34;4dd15cb4-a9b9-4858-b668-0a019a4a9ee3&#34;</span>
+</span></span></code></pre></div><p>Copy that <code>database_id</code> into the <code>[[d1_databases]]</code> block in <code>wrangler.toml</code> (Step 1). The <code>binding</code> name (<code>DB</code>) is what your Worker and your generated <code>Env</code> type will call it.</p>
+<p>For the schema, define tables with <strong><a href="https://orm.drizzle.team/">Drizzle ORM</a></strong> and generate SQL migrations:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-ts" data-lang="ts"><span style="display:flex;"><span><span style="color:#75715e">// drizzle.config.ts
+</span></span></span><span style="display:flex;"><span><span style="color:#66d9ef">import</span> { <span style="color:#a6e22e">defineConfig</span> } <span style="color:#66d9ef">from</span> <span style="color:#e6db74">&#34;drizzle-kit&#34;</span>;
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">export</span> <span style="color:#66d9ef">default</span> <span style="color:#a6e22e">defineConfig</span>({
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">schema</span><span style="color:#f92672">:</span> <span style="color:#e6db74">&#34;./drizzle/schema.ts&#34;</span>,
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">out</span><span style="color:#f92672">:</span> <span style="color:#e6db74">&#34;./drizzle/migrations&#34;</span>,
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">dialect</span><span style="color:#f92672">:</span> <span style="color:#e6db74">&#34;sqlite&#34;</span>,
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">strict</span>: <span style="color:#66d9ef">true</span>,
+</span></span><span style="display:flex;"><span>});
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>npx drizzle-kit generate          <span style="color:#75715e"># writes drizzle/migrations/0000_*.sql</span>
+</span></span><span style="display:flex;"><span>npx wrangler d1 migrations apply my-app --local    <span style="color:#75715e"># dev database</span>
+</span></span><span style="display:flex;"><span>npx wrangler d1 migrations apply my-app --remote   <span style="color:#75715e"># production database</span>
+</span></span></code></pre></div><p><strong>Gotchas in this step:</strong></p>
+<ol>
+<li><strong>Drizzle and wrangler speak different SQL dialects (but it works out of the box).</strong> Drizzle separates statements with a <code>--&gt; statement-breakpoint</code> comment marker rather than just semicolons. wrangler&rsquo;s migration runner handles these files correctly, so point <code>migrations_dir</code> at Drizzle&rsquo;s output folder and don&rsquo;t hand-edit the files. (You <em>will</em> need the marker yourself in Step 4, so remember it exists.)</li>
+<li><code>wrangler d1 migrations apply</code> asks for confirmation before applying. In a non-interactive shell it announces <code>Using fallback value in non-interactive context: yes</code> and proceeds. Fine locally, worth knowing before you wire it into a script.</li>
+<li><strong>Apply migrations to both databases</strong>, and keep them in lockstep: <code>--local</code> for <code>vite dev</code> and tests, <code>--remote</code> for production. The applied set is tracked in the <code>d1_migrations</code> table per database, so they evolve independently until you check.</li>
+</ol>
+<h2 id="step-3-importing-seed-data-the-d1-limits-that-shape-your-importer">Step 3: Importing seed data (the D1 limits that shape your importer)</h2>
+<p>My project required to be bootstrapped with bulk content (mine has 10000 rows). Writing the importer forces you into three D1 realities:</p>
+<ul>
+<li><strong>A statement may contain at most 100 bound parameters.</strong> So a parameterized <code>INSERT</code> of even 15 rows with 8 columns overflows. The workaround (documented in D1&rsquo;s own docs, and the reason your importer looks unusual): <strong>emit literal-value SQL</strong>. String literals baked into the statement, no parameters at all.</li>
+<li><strong>A statement may be at most 100 KB.</strong> So even literal inserts must be <em>chunked</em>. I used 100 rows per multi-row <code>INSERT</code>.</li>
+<li><strong>Re-imports must be idempotent.</strong> Use <code>INSERT … ON CONFLICT (item_id) DO UPDATE SET …</code> so running the importer twice converges to the same state instead of duplicating rows.</li>
+</ul>
+<p>The generator ends up looking like this (pure functions, no Node APIs, so tests can reuse it):</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-ts" data-lang="ts"><span style="display:flex;"><span><span style="color:#66d9ef">function</span> <span style="color:#a6e22e">chunk</span>(<span style="color:#a6e22e">rows</span>: <span style="color:#66d9ef">Row</span>[])<span style="color:#f92672">:</span> <span style="color:#66d9ef">string</span>[] {
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">const</span> <span style="color:#a6e22e">out</span>: <span style="color:#66d9ef">string</span>[] <span style="color:#f92672">=</span> [];
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">for</span> (<span style="color:#66d9ef">let</span> <span style="color:#a6e22e">i</span> <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>; <span style="color:#a6e22e">i</span> <span style="color:#f92672">&lt;</span> <span style="color:#a6e22e">rows</span>.<span style="color:#a6e22e">length</span>; <span style="color:#a6e22e">i</span> <span style="color:#f92672">+=</span> <span style="color:#ae81ff">100</span>) {
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">const</span> <span style="color:#a6e22e">values</span> <span style="color:#f92672">=</span> <span style="color:#a6e22e">rows</span>
+</span></span><span style="display:flex;"><span>      .<span style="color:#a6e22e">slice</span>(<span style="color:#a6e22e">i</span>, <span style="color:#a6e22e">i</span> <span style="color:#f92672">+</span> <span style="color:#ae81ff">100</span>)
+</span></span><span style="display:flex;"><span>      .<span style="color:#a6e22e">map</span>((<span style="color:#a6e22e">r</span>) <span style="color:#f92672">=&gt;</span> <span style="color:#e6db74">`(&#39;</span><span style="color:#e6db74">${</span><span style="color:#a6e22e">esc</span>(<span style="color:#a6e22e">r</span>.<span style="color:#a6e22e">item_id</span>)<span style="color:#e6db74">}</span><span style="color:#e6db74">&#39;, &#39;</span><span style="color:#e6db74">${</span><span style="color:#a6e22e">esc</span>(<span style="color:#a6e22e">r</span>.<span style="color:#a6e22e">content</span>)<span style="color:#e6db74">}</span><span style="color:#e6db74">&#39;, …)`</span>)
+</span></span><span style="display:flex;"><span>      .<span style="color:#a6e22e">join</span>(<span style="color:#e6db74">&#34;,\n&#34;</span>);
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">out</span>.<span style="color:#a6e22e">push</span>(
+</span></span><span style="display:flex;"><span>      <span style="color:#e6db74">`INSERT INTO mytable (item_id, content, …) VALUES</span><span style="color:#960050;background-color:#1e0010">\</span><span style="color:#e6db74">n</span><span style="color:#e6db74">${</span><span style="color:#a6e22e">values</span><span style="color:#e6db74">}</span><span style="color:#e6db74">`</span> <span style="color:#f92672">+</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#e6db74">` ON CONFLICT(item_id) DO UPDATE SET content = excluded.content, …;`</span>,
+</span></span><span style="display:flex;"><span>    );
+</span></span><span style="display:flex;"><span>  }
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">out</span>;
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>Apply it with wrangler, then <em>verify</em> rather than trust:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>npx wrangler d1 execute my-app --local --file scripts/seed.sql
+</span></span><span style="display:flex;"><span>npx wrangler d1 execute my-app --local --json <span style="color:#ae81ff">\
+</span></span></span><span style="display:flex;"><span>  --command <span style="color:#e6db74">&#34;SELECT (SELECT COUNT(*) FROM mytable) AS vocab, …&#34;</span>
+</span></span></code></pre></div><p><strong>Gotchas in this step:</strong></p>
+<ol>
+<li><strong><code>wrangler d1 execute --json</code> output is <code>[{ &quot;results&quot;: [ { …row… } ], &quot;success&quot;: true, … }]</code>. <code>results</code> is an array of rows, not a row object.</strong> I parsed it as <code>parsed[0].results</code> and got <code>undefined</code> for every column while staring at a log line that clearly showed the right JSON right below. It&rsquo;s <code>parsed[0].results[0]</code>.</li>
+<li><strong>D1&rsquo;s <code>.first&lt;T&gt;()</code> in Worker code also returns a <em>row object</em></strong> (<code>{ value: &quot;1&quot; }</code>), not the scalar, even when your query has a single column. Destructure: <code>row?.value</code>.</li>
+<li><strong>Verification SQL: every scalar subquery needs its own <code>FROM</code>.</strong> <code>(SELECT COUNT(*) FROM vocabulary) - (SELECT COUNT(DISTINCT item_id))</code> fails with <code>no such column: item_id</code>. The second subquery is missing <code>FROM vocabulary</code>. The error names the column, not the missing clause, which sends you looking at the wrong thing.</li>
+<li>Store a <code>seed_hash</code> (SHA-256 of the seed files) in a config table alongside <code>schema_version</code>, so a re-import after content updates is detectable instead of silent.</li>
+</ol>
+<h2 id="step-4-tests-inside-workerd-and-the-import-that-crashed-everything">Step 4: Tests inside workerd and the import that crashed everything</h2>
+<p>Cloudflare&rsquo;s current testing story is <code>@cloudflare/vitest-plugin</code>: it runs your Vitest suite <strong><a href="https://github.com/cloudflare/workerd">inside workerd</a></strong>, the real Worker runtime, with real bindings (<code>env.DB</code> and friends come from your <code>wrangler.toml</code>). It does not use mocks of the runtime, so no drift between test and production. Setup:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-ts" data-lang="ts"><span style="display:flex;"><span><span style="color:#75715e">// vitest.config.ts
+</span></span></span><span style="display:flex;"><span><span style="color:#66d9ef">import</span> { <span style="color:#a6e22e">cloudflareTest</span> } <span style="color:#66d9ef">from</span> <span style="color:#e6db74">&#34;@cloudflare/vitest-plugin&#34;</span>;
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">import</span> { <span style="color:#a6e22e">defineConfig</span> } <span style="color:#66d9ef">from</span> <span style="color:#e6db74">&#34;vitest/config&#34;</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">export</span> <span style="color:#66d9ef">default</span> <span style="color:#a6e22e">defineConfig</span>({
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">plugins</span><span style="color:#f92672">:</span> [<span style="color:#a6e22e">cloudflareTest</span>({ <span style="color:#a6e22e">wrangler</span><span style="color:#f92672">:</span> { <span style="color:#a6e22e">configPath</span><span style="color:#f92672">:</span> <span style="color:#e6db74">&#34;./wrangler.toml&#34;</span> } })],
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">test</span><span style="color:#f92672">:</span> { <span style="color:#a6e22e">setupFiles</span><span style="color:#f92672">:</span> [<span style="color:#e6db74">&#34;./tests/setup.ts&#34;</span>] },
+</span></span><span style="display:flex;"><span>});
+</span></span></code></pre></div><div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-ts" data-lang="ts"><span style="display:flex;"><span><span style="color:#75715e">// tests/setup.ts — runs INSIDE workerd, like your tests
+</span></span></span><span style="display:flex;"><span><span style="color:#66d9ef">import</span> { <span style="color:#a6e22e">env</span> } <span style="color:#66d9ef">from</span> <span style="color:#e6db74">&#34;cloudflare:workers&#34;</span>;
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">import</span> { <span style="color:#a6e22e">applyD1Migrations</span>, <span style="color:#66d9ef">type</span> <span style="color:#a6e22e">D1Migration</span> } <span style="color:#66d9ef">from</span> <span style="color:#e6db74">&#34;cloudflare:test&#34;</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">const</span> <span style="color:#a6e22e">files</span> <span style="color:#f92672">=</span> <span style="color:#66d9ef">import</span>.<span style="color:#a6e22e">meta</span>.<span style="color:#a6e22e">glob</span>(<span style="color:#e6db74">&#34;../drizzle/migrations/*.sql&#34;</span>, {
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">query</span><span style="color:#f92672">:</span> <span style="color:#e6db74">&#34;?raw&#34;</span>,
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">import</span><span style="color:#f92672">:</span> <span style="color:#e6db74">&#34;default&#34;</span>,
+</span></span><span style="display:flex;"><span>  <span style="color:#a6e22e">eager</span>: <span style="color:#66d9ef">true</span>,
+</span></span><span style="display:flex;"><span>}) <span style="color:#66d9ef">as</span> <span style="color:#a6e22e">Record</span>&lt;<span style="color:#f92672">string</span>, <span style="color:#a6e22e">string</span>&gt;;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">const</span> <span style="color:#a6e22e">migrations</span>: <span style="color:#66d9ef">D1Migration</span>[] <span style="color:#f92672">=</span> Object.<span style="color:#a6e22e">entries</span>(<span style="color:#a6e22e">files</span>)
+</span></span><span style="display:flex;"><span>  .<span style="color:#a6e22e">sort</span>(([<span style="color:#a6e22e">a</span>], [<span style="color:#a6e22e">b</span>]) <span style="color:#f92672">=&gt;</span> <span style="color:#a6e22e">a</span>.<span style="color:#a6e22e">localeCompare</span>(<span style="color:#a6e22e">b</span>))
+</span></span><span style="display:flex;"><span>  .<span style="color:#a6e22e">map</span>(([<span style="color:#a6e22e">filePath</span>, <span style="color:#a6e22e">contents</span>]) <span style="color:#f92672">=&gt;</span> ({
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">name</span><span style="color:#f92672">:</span> (<span style="color:#a6e22e">filePath</span>.<span style="color:#a6e22e">split</span>(<span style="color:#e6db74">&#34;/&#34;</span>).<span style="color:#a6e22e">pop</span>() <span style="color:#f92672">??</span> <span style="color:#a6e22e">filePath</span>).<span style="color:#a6e22e">replace</span>(<span style="color:#e6db74">/\.sql$/</span>, <span style="color:#e6db74">&#34;&#34;</span>),
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">queries</span>: <span style="color:#66d9ef">contents</span>
+</span></span><span style="display:flex;"><span>      .<span style="color:#a6e22e">split</span>(<span style="color:#e6db74">&#34;--&gt; statement-breakpoint&#34;</span>)   <span style="color:#75715e">// remember that marker?
+</span></span></span><span style="display:flex;"><span>      .<span style="color:#a6e22e">map</span>((<span style="color:#a6e22e">q</span>) <span style="color:#f92672">=&gt;</span> <span style="color:#a6e22e">q</span>.<span style="color:#a6e22e">trim</span>())
+</span></span><span style="display:flex;"><span>      .<span style="color:#a6e22e">filter</span>(Boolean),
+</span></span><span style="display:flex;"><span>  }));
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">await</span> <span style="color:#a6e22e">applyD1Migrations</span>(<span style="color:#a6e22e">env</span>.<span style="color:#a6e22e">DB</span>, <span style="color:#a6e22e">migrations</span>);
+</span></span></code></pre></div><p><strong>This setup file is the single most important gotcha in this post.</strong> The natural, documented-looking way to write it is:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-ts" data-lang="ts"><span style="display:flex;"><span><span style="color:#66d9ef">import</span> { <span style="color:#a6e22e">readD1Migrations</span> } <span style="color:#66d9ef">from</span> <span style="color:#e6db74">&#34;@cloudflare/vitest-plugin&#34;</span>;  <span style="color:#75715e">// ← DON&#39;T
+</span></span></span><span style="display:flex;"><span><span style="color:#66d9ef">const</span> <span style="color:#a6e22e">migrations</span> <span style="color:#f92672">=</span> <span style="color:#66d9ef">await</span> <span style="color:#a6e22e">readD1Migrations</span>(<span style="color:#e6db74">&#34;./drizzle/migrations&#34;</span>);
+</span></span></code></pre></div><p>Do that and <strong>every test fails. Even a file containing only <code>expect(1).toBe(2)</code></strong> with an error that points nowhere near your code:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>TypeError: Cannot destructure property &#39;Console&#39; of &#39;require(...)&#39; as it is undefined.
+</span></span><span style="display:flex;"><span>    at .../undici/lib/mock/pending-interceptors-formatter.js?mf_vitest_no_cjs_esm_shim:4:9
+</span></span><span style="display:flex;"><span>    at .../undici/index.js?mf_vitest_no_cjs_esm_shim:21:19
+</span></span><span style="display:flex;"><span>    at .../miniflare/dist/src/index.js:54383:22
+</span></span></code></pre></div><p>What&rsquo;s actually happening, chain reaction style:</p>
+<ol>
+<li>The plugin&rsquo;s <strong>root package entry</strong> (<code>@cloudflare/vitest-plugin</code>) is the <em>pool</em> module. It imports <strong>miniflare</strong> (a Node-side library).</li>
+<li>Setup files run <strong>inside workerd</strong>, not in Node. Importing the pool module there drags miniflare and miniflare&rsquo;s dependency <strong>undici</strong> into the worker&rsquo;s module graph.</li>
+<li>undici&rsquo;s mock support does <code>const { Console } = require('node:console')</code> at module load.</li>
+<li>Inside this runner, <code>require('node:console')</code> resolves to the plugin&rsquo;s own ESM polyfill (registered in the runner&rsquo;s module manifest), and a CJS <code>require()</code> of an ESM module yields <code>undefined</code> here, hence &ldquo;cannot destructure … as it is undefined&rdquo;.</li>
+<li>The <code>?mf_vitest_no_cjs_esm_shim</code> suffix in the stack trace is the fingerprint of that module-fallback path.</li>
+</ol>
+<p>Two facts make this confusing: <code>readD1Migrations()</code> genuinely <em>is</em> the API for this but its own type docs say to call it <strong>&ldquo;inside Node.js&rdquo;</strong> (it uses <code>fs.readFileSync</code>), and with this plugin setup files are <em>not</em> Node. And the failure happens at module-load time in a shared dependency, so nothing in the stack mentions your setup file at all.</p>
+<p><strong>How to debug this class of problem</strong> (this is how I proved miniflare was loading inside the worker): the plugin&rsquo;s module loader logs through <code>util.debuglog</code>, so run with:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>NODE_DEBUG<span style="color:#f92672">=</span><span style="color:#e6db74">&#39;vitest-plugin:module-fallback&#39;</span> npx vitest run
+</span></span></code></pre></div><p>Every module resolution in the worker prints with its referrer. Seeing <code>miniflare/dist/src/index.js</code> and <code>undici/...</code> in that trace was the whole diagnosis in one shot.</p>
+<p><strong>The fix</strong> is the <code>import.meta.glob</code> version at the top of this section: read the migration SQL as strings through Vite (a transform that works fine in the test runtime), split on <code>--&gt; statement-breakpoint</code>, and apply with <code>applyD1Migrations</code>. No Node APIs, no plugin-root import.</p>
+<p>Three smaller setup gotchas while we&rsquo;re here:</p>
+<ul>
+<li><strong><code>import { env } from &quot;cloudflare:workers&quot;</code></strong>. the <code>env</code> exported from <code>cloudflare:test</code> is deprecated (still works, warns in types). <code>applyD1Migrations</code> and the <code>D1Migration</code> type still come from <code>cloudflare:test</code>.</li>
+<li><strong>Types:</strong> add <code>&quot;types&quot;: [&quot;@cloudflare/vitest-plugin/types&quot;]</code> to <code>tsconfig.json</code>, or the <code>cloudflare:test</code> module won&rsquo;t resolve under <code>tsc --noEmit</code>.</li>
+<li><strong><code>.first&lt;T&gt;()</code> returns a row object</strong> (mentioned twice now because it cost me twice).</li>
+</ul>
+<h2 id="step-5-cloudflare-one-access-set-up-the-gate-before-the-first-deploy">Step 5: Cloudflare One Access: set up the gate <em>before</em> the first deploy</h2>
+<p>The rule for a private app: <strong>the Access application exists before the Worker does.</strong> That ordering feels backwards, but it&rsquo;s right. An Access application is just a <em>hostname policy</em>. It doesn&rsquo;t need anything to be deployed yet; it simply has no effect until traffic arrives at that hostname. And it means there is never a moment where a live Worker answers strangers.</p>
+<h3 id="5a-find-your-workersdev-subdomain">5a. Find your <code>workers.dev</code> subdomain</h3>
+<p>The app&rsquo;s final URL will be <code>https://&lt;worker-name&gt;.&lt;subdomain&gt;.workers.dev</code>, and you need the full hostname to write the Access policy. Currenlty you can&rsquo;t get it from wrangler: <strong>the <code>wrangler subdomain</code> command from v1/v2 is gone in wrangler 4</strong>, and <code>wrangler whoami</code> doesn&rsquo;t print it. Query the account API instead (any token with account read. Even wrangler&rsquo;s own OAuth token works for this):</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>curl -s -H <span style="color:#e6db74">&#34;Authorization: Bearer </span>$TOKEN<span style="color:#e6db74">&#34;</span> <span style="color:#ae81ff">\
+</span></span></span><span style="display:flex;"><span>  <span style="color:#e6db74">&#34;https://api.cloudflare.com/client/v4/accounts/</span>$ACCOUNT_ID<span style="color:#e6db74">/workers/subdomain&#34;</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># → { &#34;result&#34;: { &#34;subdomain&#34;: &#34;yourname&#34; }, &#34;success&#34;: true }</span>
+</span></span></code></pre></div><h3 id="5b-create-the-application-in-the-one-dashboard">5b. Create the application in the One dashboard</h3>
+<p>In the new Cloudflare dashboard: <strong>Protect &amp; connect → Zero Trust → Access controls → Applications → Create new application → Self-hosted</strong>:</p>
+<p><a href="images/0001.avif">
+  <img src="images/0001.avif" alt="">
+
+</a></p>
+<p><a href="images/0002.avif">
+  <img src="images/0002.avif" alt="">
+
+</a></p>
+<table>
+	<thead>
+			<tr>
+					<th>Field</th>
+					<th>Value</th>
+			</tr>
+	</thead>
+	<tbody>
+			<tr>
+					<td>Name</td>
+					<td><code>my-app</code></td>
+			</tr>
+			<tr>
+					<td>Application domain</td>
+					<td><code>my-app.yourname.workers.dev</code> (path empty = whole app)</td>
+			</tr>
+			<tr>
+					<td>Policy name</td>
+					<td>*<em>anything*</em></td>
+			</tr>
+			<tr>
+					<td>Action</td>
+					<td><strong>Allow</strong></td>
+			</tr>
+			<tr>
+					<td>Include rule</td>
+					<td><strong>Emails</strong> → your address</td>
+			</tr>
+			<tr>
+					<td>Session duration</td>
+					<td>24 hours (or whatever you like)</td>
+			</tr>
+	</tbody>
+</table>
+<p>One-time PIN is the default login method for a fresh Access setup without extra configuration needed.</p>
+<h3 id="5c-do-not-verify-access-with-wranglers-oauth-token">5c. Do not verify Access with wrangler&rsquo;s OAuth token</h3>
+<p>This one cost me a confusing half hour. After creating the app, I checked from the CLI with the token wrangler stores in <code>~/.config/.wrangler/config/default.toml</code>:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>GET /accounts/&lt;id&gt;/access/apps
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># → { &#34;result&#34;: [], &#34;success&#34;: true, &#34;result_info&#34;: { &#34;count&#34;: 0 } }   ← silent lie</span>
+</span></span><span style="display:flex;"><span>POST /accounts/&lt;id&gt;/access/apps
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># → { &#34;errors&#34;: [{ &#34;code&#34;: 1010, &#34;error&#34;: &#34;auth.forbidden&#34; }] }</span>
+</span></span><span style="display:flex;"><span>GET /accounts/&lt;id&gt;/access/organizations
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># → { &#34;errors&#34;: [{ &#34;code&#34;: 10000, &#34;message&#34;: &#34;Authentication error&#34; }] }</span>
+</span></span></code></pre></div><p>Three different behaviors, all useless: the <strong>list endpoint returns <code>success: true</code> with an empty array</strong> when the token lacks Access scope and it does <em>not</em> error, so you can easily conclude your app doesn&rsquo;t exist. Writes are correctly rejected, and sibling endpoints scream. wrangler&rsquo;s OAuth token simply wasn&rsquo;t granted Access scopes (it&rsquo;s meant for <code>wrangler deploy</code>, not Access administration).</p>
+<p>Either use your <strong>scoped API token</strong> (the one from Prerequisites, which has <code>Access: Apps and Policies Read</code> + <code>Write</code>) for API verification, or better: verify <em>functionally</em>, which is what actually matters (Step 6).</p>
+<h2 id="step-6-deploy-and-prove-the-gate">Step 6: Deploy and prove the gate</h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>npx vite build <span style="color:#f92672">&amp;&amp;</span> npx wrangler deploy
+</span></span></code></pre></div><p>The Vite plugin emits <code>dist/client</code> (your static frontend) plus the Worker bundle; wrangler uploads both in one operation. Output ends with your URL:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-text" data-lang="text"><span style="display:flex;"><span>Uploaded my-app (17.70 sec)
+</span></span><span style="display:flex;"><span>  https://my-app.yourname.workers.dev
+</span></span></code></pre></div><p>Now the two curls that matter:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span><span style="color:#75715e"># BEFORE the first deploy (nothing exists yet):</span>
+</span></span><span style="display:flex;"><span>curl -I https://my-app.yourname.workers.dev/
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># → HTTP 404, body: error code: 1042     ← &#34;no such worker&#34;</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#   Note: Access does NOT intercept yet — there&#39;s nothing to route to.</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># AFTER deploy, still unauthenticated:</span>
+</span></span><span style="display:flex;"><span>curl -I https://my-app.yourname.workers.dev/
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># → HTTP/2 302</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#   location: https://&lt;your-team&gt;.cloudflareaccess.com/cdn-cgi/access/login/…</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#   www-authenticate: Cloudflare-Access resource_metadata=&#34;…/.well-known/…&#34;</span>
+</span></span></code></pre></div><p><strong>That 302 is the acceptance test for the whole gate.</strong> Unauthenticated traffic never sees your app. It&rsquo;s redirected to the Access login page at the edge. (<code>1042</code> pre-deploy is also why you can&rsquo;t pre-verify the gate: Access only starts intercepting once the hostname routes somewhere.)</p>
+<p>Then walk through it in a browser: open the URL, land on the OTP page, enter your email, type the 6-digit code, see your app. Session persists for the policy duration you chose. That&rsquo;s the entire auth story. There is no auth code in your Worker, and there should never be.</p>
+<p><strong>One deployment gotcha:</strong> if you ever deploy <em>before</em> creating the Access app, the page is public until you add the policy. For a private app, treat Access creation as a hard prerequisite, not a cleanup step.</p>
+<h2 id="step-7-ci-kept-minimal">Step 7: CI, kept minimal</h2>
+<p>For a project this size, CI is one job with the checks you&rsquo;d run locally anyway:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#75715e"># .github/workflows/ci.yml</span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">name</span>: <span style="color:#ae81ff">CI</span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">on</span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">push</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">branches</span>: [<span style="color:#ae81ff">master]</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">pull_request</span>:
+</span></span><span style="display:flex;"><span><span style="color:#f92672">jobs</span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">check</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">runs-on</span>: <span style="color:#ae81ff">ubuntu-latest</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">steps</span>:
+</span></span><span style="display:flex;"><span>      - <span style="color:#f92672">uses</span>: <span style="color:#ae81ff">actions/checkout@v4</span>
+</span></span><span style="display:flex;"><span>      - <span style="color:#f92672">uses</span>: <span style="color:#ae81ff">actions/setup-node@v4</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#f92672">with</span>:
+</span></span><span style="display:flex;"><span>          <span style="color:#f92672">node-version</span>: <span style="color:#ae81ff">24</span>
+</span></span><span style="display:flex;"><span>          <span style="color:#f92672">cache</span>: <span style="color:#ae81ff">npm</span>
+</span></span><span style="display:flex;"><span>      - <span style="color:#f92672">run</span>: <span style="color:#ae81ff">npm install</span>
+</span></span><span style="display:flex;"><span>      - <span style="color:#f92672">run</span>: <span style="color:#ae81ff">npm ci</span>
+</span></span><span style="display:flex;"><span>      - <span style="color:#f92672">run</span>: <span style="color:#ae81ff">npm run lint</span>
+</span></span><span style="display:flex;"><span>      - <span style="color:#f92672">run</span>: <span style="color:#ae81ff">npx wrangler types --check</span>
+</span></span><span style="display:flex;"><span>      - <span style="color:#f92672">run</span>: <span style="color:#ae81ff">npm run typecheck</span>
+</span></span><span style="display:flex;"><span>      - <span style="color:#f92672">run</span>: <span style="color:#ae81ff">npm test</span>
+</span></span><span style="display:flex;"><span>      - <span style="color:#f92672">run</span>: <span style="color:#ae81ff">npm run build</span>
+</span></span></code></pre></div><p>Notes: <code>wrangler types --check</code> needs <strong>no credentials</strong> (it only compares the generated file). That&rsquo;s why CI can run without any Cloudflare secrets at all. The API token and account id from Prerequisites only become necessary when a job <em>deploys</em>, and a deploy job should declare <code>environment: production</code> if that&rsquo;s where you stored the secrets. No deploy-by-default in CI is also a nice safety property for an app whose Access gate you just carefully ordered <em>before</em> the first deploy.</p>
+<hr>
+<h2 id="verification-matrix">Verification matrix</h2>
+<p>The end state, and how to test each row yourself:</p>
+<table>
+	<thead>
+			<tr>
+					<th>Check</th>
+					<th>Command</th>
+					<th>Expected</th>
+			</tr>
+	</thead>
+	<tbody>
+			<tr>
+					<td>Local dev (workerd + D1)</td>
+					<td><code>npx vite dev</code></td>
+					<td>app on <code>localhost</code>, <code>/api/*</code> responds</td>
+			</tr>
+			<tr>
+					<td>Migrations (local)</td>
+					<td><code>npx wrangler d1 migrations apply my-app --local</code></td>
+					<td><code>0000_*.sql</code>, <code>23 commands executed</code></td>
+			</tr>
+			<tr>
+					<td>Migrations (remote)</td>
+					<td>same with <code>--remote</code></td>
+					<td>same</td>
+			</tr>
+			<tr>
+					<td>Seed + row counts</td>
+					<td><code>npm run seed</code> (file apply + <code>--json</code> count query)</td>
+					<td><code>8334 vocabulary / 2091 kanji</code>, dups <code>0</code></td>
+			</tr>
+			<tr>
+					<td>Idempotent re-import</td>
+					<td>run the seed twice</td>
+					<td>counts unchanged</td>
+			</tr>
+			<tr>
+					<td>Types fresh</td>
+					<td><code>npx wrangler types --check</code></td>
+					<td><code>Types … are up to date</code></td>
+			</tr>
+			<tr>
+					<td>Lint + types + tests</td>
+					<td><code>npm run lint &amp;&amp; npx tsc --noEmit &amp;&amp; npx vitest run</code></td>
+					<td>0 errors, all tests pass <strong>in workerd</strong></td>
+			</tr>
+			<tr>
+					<td>Build + deploy</td>
+					<td><code>npx vite build &amp;&amp; npx wrangler deploy</code></td>
+					<td>URL printed, assets uploaded</td>
+			</tr>
+			<tr>
+					<td><strong>Gate blocks strangers</strong></td>
+					<td><code>curl -I https://&lt;app-url&gt;/</code> (unauthenticated)</td>
+					<td><strong>302 → <code>*.cloudflareaccess.com/.../login/...</code></strong> + <code>www-authenticate: Cloudflare-Access</code></td>
+			</tr>
+			<tr>
+					<td>Gate lets you in</td>
+					<td>browser + OTP email</td>
+					<td>app renders after 6-digit code</td>
+			</tr>
+			<tr>
+					<td>CI</td>
+					<td>push a branch</td>
+					<td>lint, <code>types --check</code>, typecheck, tests, build all green</td>
+			</tr>
+	</tbody>
+</table>
+<h2 id="recap">Recap</h2>
+<ol>
+<li>Scaffold with <strong>Vite + <code>@cloudflare/vite-plugin</code></strong>. No <code>[assets]</code> section, ever; wrangler detects <code>dist/client</code> for you.</li>
+<li>Generate <code>worker-configuration.d.ts</code> with <code>wrangler types</code>, <strong>commit it</strong>, ignore it in ESLint, and gate CI with <code>wrangler types --check</code>.</li>
+<li>Create D1 with <code>wrangler d1 create</code>, copy the <code>database_id</code>, and keep migrations applied to <strong>both</strong> <code>--local</code> and <code>--remote</code>.</li>
+<li>Seed with <strong>literal-value, chunked, <code>ON CONFLICT</code> SQL</strong>. D1&rsquo;s 100-bound-parameter cap makes parameterized bulk inserts a dead end.</li>
+<li>Parse <code>wrangler d1 execute --json</code> as <code>parsed[0].results[0]</code>, and expect <strong>row objects</strong> (not scalars) from <code>.first&lt;T&gt;()</code>.</li>
+<li>Tests run <strong>inside workerd</strong>: never import <code>@cloudflare/vitest-plugin</code>&rsquo;s root entry from setup/test code load migrations with <code>import.meta.glob</code> + <code>--&gt; statement-breakpoint</code> instead. When a test crash points at some dependency&rsquo;s internals, <code>NODE_DEBUG='vitest-plugin:module-fallback'</code> shows you what&rsquo;s really being loaded.</li>
+<li>Create the <strong>Cloudflare One Access app before the first deploy</strong>; the app doesn&rsquo;t need the Worker to exist, but the Worker must not exist without the app.</li>
+<li>wrangler&rsquo;s OAuth token <strong>cannot</strong> verify Access (empty list ≠ empty truth) use a scoped API token or verify functionally.</li>
+<li>Find your <code>workers.dev</code> subdomain via the account API wrangler 4 no longer has a <code>subdomain</code> command.</li>
+<li>The gate&rsquo;s acceptance test is a <strong><code>302</code> to <code>cloudflareaccess.com</code></strong> from <code>curl</code> before deploy you&rsquo;ll see <code>1042</code> instead, which is expected.</li>
+</ol>
+<p>Total cost of the finished stack: zero. Total time: an afternoon, most of which was staring at a module stack trace that didn&rsquo;t mention my code.</p>
+<p>Thank&rsquo;s for reading, and happy coding!</p>
+
+  </article>
+  <nav id="mini-toc" aria-label="Table of contents">
+    
+  </nav>
+  <script>
+    (function () {
+      const toc = document.getElementById('mini-toc');
+      if (!toc) return;
+
+      
+      const headings = Array.from(
+        document.querySelectorAll('article h2, article h3')
+      );
+
+      if (headings.length === 0) return;
+
+      
+      headings.forEach((h) => {
+        
+        if (!h.id) {
+          h.id = h.textContent.trim()
+            .toLowerCase()
+            .replace(/[^\w\s-]/g, '')
+            .replace(/\s+/g, '-');
+        }
+
+        const a = document.createElement('a');
+        a.href = '#' + h.id;
+        a.textContent = h.textContent;
+        
+        if (h.tagName === 'H3') a.style.paddingLeft = '1rem';
+        toc.appendChild(a);
+      });
+
+      
+      const links = Array.from(toc.querySelectorAll('a'));
+
+      function onScroll() {
+        let current = headings[0];
+        for (const h of headings) {
+          if (h.getBoundingClientRect().top <= 120) {
+            current = h;
+          }
+        }
+        links.forEach((a) => {
+          a.classList.toggle('active', a.getAttribute('href') === '#' + current.id);
+        });
+      }
+
+      window.addEventListener('scroll', onScroll, { passive: true });
+      onScroll(); 
+    })();
+  </script>
+</main>
+
+<div class="comment">
+  <script src="https://utteranc.es/client.js" repo="rohmanhakim/rohmanhakim.github.io" issue-term="pathname"
+    theme="github-light" crossorigin="anonymous" async>
+    </script>
+</div>
+
+
+  <footer>
+  <script>
+  const btnSwitchTheme = document.getElementById("btn-switch-theme")
+
+  function getTheme() {
+    const cookies = Object.fromEntries(
+      document.cookie.split("; ").map(c => c.split("="))
+    );
+    return cookies.theme || "light";
+  }
+
+  function invertTheme(theme) {
+    return theme == "light" ? "dark" : "light"
+  }
+
+  function applyTheme(toTheme) {
+    btnSwitchTheme.textContent = "Switch to " + invertTheme(toTheme) + " theme"
+    document.querySelector("html").style = toTheme == "dark" ? "filter: invert(1);" : ""
+    neuralizeChildrenColor("img", toTheme)
+    neuralizeChildrenColor("button", toTheme)
+    neuralizeChildrenColor(".resume-download-button", toTheme)
+    neuralizeChildrenColor(".highlight", toTheme)
+  }
+
+  function neuralizeChildrenColor(child, toTheme) {
+    document.querySelectorAll(child).forEach(el => {
+      el.style = toTheme == "dark" ? "filter: invert(1);" : ""
+    })
+  }
+
+  btnSwitchTheme.addEventListener("click", (event) => {
+    const theme = getTheme()
+    const newTheme = invertTheme(theme)
+    document.cookie = "theme=" + newTheme + ";path=/"
+    applyTheme(newTheme)
+  })
+
+  applyTheme(getTheme())
+</script>
+<div class="footer-container">
+  <p>Copyright © 2026 <a href="/">Muhammad Arif Rohman Hakim</a></p>
+  <ul>
+    <li>
+      <a href="https://www.linkedin.com/in/rohmanhakim/">LinkedIn</a>
+    </li>
+    <li>
+      <a href="https://github.com/rohmanhakim/">GitHub</a>
+    </li>
+    <li>
+      <a href="/about">About</a>
+    </li>
+    <li>
+      <a href="/index.xml" title="RSS Feed">RSS</a>
+    </li>
+  </ul>
+</div>
+  
+  </footer>
+  </body>
+</html>

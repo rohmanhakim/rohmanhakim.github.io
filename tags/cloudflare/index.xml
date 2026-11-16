@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+	<channel>
+		<title>Cloudflare on Arif&#39;s Homepage</title>
+		<link>https://arifrohman.com/tags/cloudflare/</link>
+		<description>Recent content in Cloudflare on Arif&#39;s Homepage</description>
+		<generator>Hugo</generator>
+		<language>en-us</language>
+		
+		
+		
+		
+			<lastBuildDate>Mon, 16 Nov 2026 00:00:00 +0000</lastBuildDate>
+		
+			<atom:link href="https://arifrohman.com/tags/cloudflare/index.xml" rel="self" type="application/rss+xml" />
+			<item>
+				<title>How to Start a Cloudflare Workers Project with Cloudflare One Access in 2026</title>
+				<link>https://arifrohman.com/post/starting-a-cloudflare-workers-project-with-cloudflare-one-access/</link>
+				<pubDate>Mon, 16 Nov 2026 00:00:00 +0000</pubDate>
+				<guid>https://arifrohman.com/post/starting-a-cloudflare-workers-project-with-cloudflare-one-access/</guid>
+				<description>Step-by-step guide to starting a Cloudflare Workers project in 2026: Vite + @cloudflare/vite-plugin scaffold, Drizzle migrations on D1, idempotent literal-value seed imports, unit tests running inside workerd with @cloudflare/vitest-plugin, a Cloudflare One Access One-time PIN gate set up before the first deploy, and a minimal CI pipeline. Includes every gotcha found along the way: the wrangler OAuth token that silently returns an empty Access app list, wrangler v4&amp;rsquo;s missing subdomain command, the D1 100-bound-parameter cap, JSON output shapes that are not what you&amp;rsquo;d guess, and the miniflare/undici/node:console crash that fails every test until you stop importing the plugin&amp;rsquo;s root package from workerd.</description>
+			</item>
+	</channel>
+</rss>

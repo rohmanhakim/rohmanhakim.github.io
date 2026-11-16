@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+	<channel>
+		<title>Arif&#39;s Homepage</title>
+		<link>https://arifrohman.com/</link>
+		<description>Recent content on Arif&#39;s Homepage</description>
+		<generator>Hugo</generator>
+		<language>en-us</language>
+		
+		
+		
+		
+			<lastBuildDate>Mon, 16 Nov 2026 00:00:00 +0000</lastBuildDate>
+		
+			<atom:link href="https://arifrohman.com/index.xml" rel="self" type="application/rss+xml" />
+			<item>
+				<title>How to Start a Cloudflare Workers Project with Cloudflare One Access in 2026</title>
+				<link>https://arifrohman.com/post/starting-a-cloudflare-workers-project-with-cloudflare-one-access/</link>
+				<pubDate>Mon, 16 Nov 2026 00:00:00 +0000</pubDate>
+				<guid>https://arifrohman.com/post/starting-a-cloudflare-workers-project-with-cloudflare-one-access/</guid>
+				<description>Step-by-step guide to starting a Cloudflare Workers project in 2026: Vite + @cloudflare/vite-plugin scaffold, Drizzle migrations on D1, idempotent literal-value seed imports, unit tests running inside workerd with @cloudflare/vitest-plugin, a Cloudflare One Access One-time PIN gate set up before the first deploy, and a minimal CI pipeline. Includes every gotcha found along the way: the wrangler OAuth token that silently returns an empty Access app list, wrangler v4&amp;rsquo;s missing subdomain command, the D1 100-bound-parameter cap, JSON output shapes that are not what you&amp;rsquo;d guess, and the miniflare/undici/node:console crash that fails every test until you stop importing the plugin&amp;rsquo;s root package from workerd.</description>
+			</item>
+			<item>
+				<title>Setting Up the Search Backend for career-ops with Pi</title>
+				<link>https://arifrohman.com/post/setting-up-search-backend-for-career-ops-with-pi/</link>
+				<pubDate>Fri, 09 Oct 2026 00:00:00 +0000</pubDate>
+				<guid>https://arifrohman.com/post/setting-up-search-backend-for-career-ops-with-pi/</guid>
+				<description>Step-by-step guide to fixing and setting up the search backend tools for career-ops when running inside Pi. Starts from the missing piece most guides skip: the unipi extension (@pi-unipi/web-api) that actually provides Pi&amp;rsquo;s web tools, and how to install it with pi install. Then covers how its provider-based web_search ranks backends, diagnosing which providers are down or unconfigured, setting up wigolo as a free local search daemon, working around an ISP-level DNS hijack that silently breaks DuckDuckGo, wiring free Jina and Tavily API keys (including two upstream quirks that make them fail silently), and enabling the career-ops Tavily and Serper plugins through .env and plugins.mjs. Ends with a verification matrix. All on free tiers.</description>
+			</item>
+			<item>
+				<title>Auditing Retro ROMs with Go: Building a Hash-Based Identification Tool</title>
+				<link>https://arifrohman.com/post/auditing-retro-roms-with-go/</link>
+				<pubDate>Sun, 06 Sep 2026 00:00:00 +0000</pubDate>
+				<guid>https://arifrohman.com/post/auditing-retro-roms-with-go/</guid>
+				<description>How I built a Go tool to audit my Retro handheld&amp;rsquo;s ROM collection using content hashing and DAT databases.</description>
+			</item>
+			<item>
+				<title>Running Worms W.M.D Natively on PikaOS Linux</title>
+				<link>https://arifrohman.com/post/running-worms-w.m.d-natively-on-pikaos-linux/</link>
+				<pubDate>Mon, 10 Aug 2026 00:00:00 +0000</pubDate>
+				<guid>https://arifrohman.com/post/running-worms-w.m.d-natively-on-pikaos-linux/</guid>
+				<description>How I got the native Linux build of Worms W.M.D running on Debian-based Linux using Steam Runtime libraries and a launch wrapper.</description>
+			</item>
+			<item>
+				<title>Debugging a VS Code Extension Against Another Project (Without Losing Your Extensions)</title>
+				<link>https://arifrohman.com/post/debugging-a-vs-code-extension-against-another-project-without-losing-your-extensions/</link>
+				<pubDate>Fri, 07 Aug 2026 00:00:00 +0000</pubDate>
+				<guid>https://arifrohman.com/post/debugging-a-vs-code-extension-against-another-project-without-losing-your-extensions/</guid>
+				<description>Learn how to debug a VS Code extension against a real project while keeping only the extensions you want available in the Extension Development Host.</description>
+			</item>
+			<item>
+				<title>Fixing PATH issue in VS Code Terminal</title>
+				<link>https://arifrohman.com/post/fixing-path-issue-in-vscode-terminal/</link>
+				<pubDate>Thu, 06 Aug 2026 00:00:00 +0000</pubDate>
+				<guid>https://arifrohman.com/post/fixing-path-issue-in-vscode-terminal/</guid>
+				<description>Quick fix for when a CLI tool works in your regular terminal but fails with &amp;lsquo;command not found&amp;rsquo; in VS Code&amp;rsquo;s integrated terminal. The issue is bash&amp;rsquo;s early return for non-interactive shells, and the fix is moving PATH exports before that return.</description>
+			</item>
+			<item>
+				<title>Setting Up GitHub MCP Server in Cline</title>
+				<link>https://arifrohman.com/post/setting-up-github-mcp-server-in-cline/</link>
+				<pubDate>Mon, 03 Aug 2026 00:00:00 +0000</pubDate>
+				<guid>https://arifrohman.com/post/setting-up-github-mcp-server-in-cline/</guid>
+				<description>Step-by-step guide to setting up the GitHub MCP server in Cline, giving your AI coding agent direct access to read and analyze GitHub repositories.</description>
+			</item>
+			<item>
+				<title>Go&#39;s Delve Suddenly Print `Building .`</title>
+				<link>https://arifrohman.com/post/gos-delve-suddenly-print-building-./</link>
+				<pubDate>Thu, 09 Jul 2026 00:00:00 +0000</pubDate>
+				<guid>https://arifrohman.com/post/gos-delve-suddenly-print-building-./</guid>
+				<description>A short note on why VS Code&amp;rsquo;s Go debugger started printing &amp;lsquo;Building .&amp;rsquo; after upgrading to Delve 1.27.0, and whether it can be disabled.</description>
+			</item>
+			<item>
+				<title>Integer Digits Extraction in Go</title>
+				<link>https://arifrohman.com/post/integer-digits-extraction-in-go/</link>
+				<pubDate>Thu, 04 Jun 2026 00:00:00 +0000</pubDate>
+				<guid>https://arifrohman.com/post/integer-digits-extraction-in-go/</guid>
+				<description>A post exploring different approach of digits extraction in GO.</description>
+			</item>
+			<item>
+				<title>Implementing Any-In Prioritized-Out Data Type using Heap in Go</title>
+				<link>https://arifrohman.com/post/implementing-any-in-prioritized-out-data-type-using-heap-in-go/</link>
+				<pubDate>Mon, 01 Jun 2026 00:00:00 +0000</pubDate>
+				<guid>https://arifrohman.com/post/implementing-any-in-prioritized-out-data-type-using-heap-in-go/</guid>
+				<description>Explore how to design an any-in prioritized-out data structure using priority queue and heap in go.</description>
+			</item>
+	</channel>
+</rss>

@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+	<channel>
+		<title>Tech on Arif&#39;s Homepage</title>
+		<link>https://arifrohman.com/categories/tech/</link>
+		<description>Recent content in Tech on Arif&#39;s Homepage</description>
+		<generator>Hugo</generator>
+		<language>en-us</language>
+		
+		
+		
+		
+			<lastBuildDate>Mon, 16 Nov 2026 00:00:00 +0000</lastBuildDate>
+		
+			<atom:link href="https://arifrohman.com/categories/tech/index.xml" rel="self" type="application/rss+xml" />
+			<item>
+				<title>How to Start a Cloudflare Workers Project with Cloudflare One Access in 2026</title>
+				<link>https://arifrohman.com/post/starting-a-cloudflare-workers-project-with-cloudflare-one-access/</link>
+				<pubDate>Mon, 16 Nov 2026 00:00:00 +0000</pubDate>
+				<guid>https://arifrohman.com/post/starting-a-cloudflare-workers-project-with-cloudflare-one-access/</guid>
+				<description>Step-by-step guide to starting a Cloudflare Workers project in 2026: Vite + @cloudflare/vite-plugin scaffold, Drizzle migrations on D1, idempotent literal-value seed imports, unit tests running inside workerd with @cloudflare/vitest-plugin, a Cloudflare One Access One-time PIN gate set up before the first deploy, and a minimal CI pipeline. Includes every gotcha found along the way: the wrangler OAuth token that silently returns an empty Access app list, wrangler v4&amp;rsquo;s missing subdomain command, the D1 100-bound-parameter cap, JSON output shapes that are not what you&amp;rsquo;d guess, and the miniflare/undici/node:console crash that fails every test until you stop importing the plugin&amp;rsquo;s root package from workerd.</description>
+			</item>
+			<item>
+				<title>Setting Up the Search Backend for career-ops with Pi</title>
+				<link>https://arifrohman.com/post/setting-up-search-backend-for-career-ops-with-pi/</link>
+				<pubDate>Fri, 09 Oct 2026 00:00:00 +0000</pubDate>
+				<guid>https://arifrohman.com/post/setting-up-search-backend-for-career-ops-with-pi/</guid>
+				<description>Step-by-step guide to fixing and setting up the search backend tools for career-ops when running inside Pi. Starts from the missing piece most guides skip: the unipi extension (@pi-unipi/web-api) that actually provides Pi&amp;rsquo;s web tools, and how to install it with pi install. Then covers how its provider-based web_search ranks backends, diagnosing which providers are down or unconfigured, setting up wigolo as a free local search daemon, working around an ISP-level DNS hijack that silently breaks DuckDuckGo, wiring free Jina and Tavily API keys (including two upstream quirks that make them fail silently), and enabling the career-ops Tavily and Serper plugins through .env and plugins.mjs. Ends with a verification matrix. All on free tiers.</description>
+			</item>
+			<item>
+				<title>Debugging a VS Code Extension Against Another Project (Without Losing Your Extensions)</title>
+				<link>https://arifrohman.com/post/debugging-a-vs-code-extension-against-another-project-without-losing-your-extensions/</link>
+				<pubDate>Fri, 07 Aug 2026 00:00:00 +0000</pubDate>
+				<guid>https://arifrohman.com/post/debugging-a-vs-code-extension-against-another-project-without-losing-your-extensions/</guid>
+				<description>Learn how to debug a VS Code extension against a real project while keeping only the extensions you want available in the Extension Development Host.</description>
+			</item>
+			<item>
+				<title>Fixing PATH issue in VS Code Terminal</title>
+				<link>https://arifrohman.com/post/fixing-path-issue-in-vscode-terminal/</link>
+				<pubDate>Thu, 06 Aug 2026 00:00:00 +0000</pubDate>
+				<guid>https://arifrohman.com/post/fixing-path-issue-in-vscode-terminal/</guid>
+				<description>Quick fix for when a CLI tool works in your regular terminal but fails with &amp;lsquo;command not found&amp;rsquo; in VS Code&amp;rsquo;s integrated terminal. The issue is bash&amp;rsquo;s early return for non-interactive shells, and the fix is moving PATH exports before that return.</description>
+			</item>
+			<item>
+				<title>Setting Up GitHub MCP Server in Cline</title>
+				<link>https://arifrohman.com/post/setting-up-github-mcp-server-in-cline/</link>
+				<pubDate>Mon, 03 Aug 2026 00:00:00 +0000</pubDate>
+				<guid>https://arifrohman.com/post/setting-up-github-mcp-server-in-cline/</guid>
+				<description>Step-by-step guide to setting up the GitHub MCP server in Cline, giving your AI coding agent direct access to read and analyze GitHub repositories.</description>
+			</item>
+			<item>
+				<title>Running Agentic Coding for Free: My OpenRouter &#43; Cline Setup</title>
+				<link>https://arifrohman.com/post/running-agentic-coding-for-free-my-openrouter-plus-cline-setup/</link>
+				<pubDate>Sat, 03 Jan 2026 00:00:00 +0000</pubDate>
+				<guid>https://arifrohman.com/post/running-agentic-coding-for-free-my-openrouter-plus-cline-setup/</guid>
+				<description>Step-by-step guide to setting up free agentic coding in VS Code using OpenRouter and Cline with the free stepfun/step-3.5-flash model from StepFun. Covers account creation, API key setup, billing configuration, model selection, Plan vs Act workflow, context management, .clinerules, token usage monitoring, and comparisons with models from OpenAI, Google, Anthropic, Moonshot AI, and MiniMax. Ideal for developers who want a zero-cost, practical introduction to autonomous AI coding workflows.</description>
+			</item>
+			<item>
+				<title>Simple Javascript Theme Switcher Using Cookie</title>
+				<link>https://arifrohman.com/post/simple-javascript-theme-switcher-using-cookie/</link>
+				<pubDate>Wed, 27 Aug 2025 00:00:00 +0000</pubDate>
+				<guid>https://arifrohman.com/post/simple-javascript-theme-switcher-using-cookie/</guid>
+				<description>Learn how to implement a simple dark/light theme switcher for your website using JavaScript and cookies, leveraging the CSS invert filter for quick theme toggling.</description>
+			</item>
+			<item>
+				<title>Include Subfolders in Windows 11 Wallpaper Slideshow</title>
+				<link>https://arifrohman.com/post/include-subfolders-in-windows-11-wallpaper-slideshow/</link>
+				<pubDate>Sun, 24 Aug 2025 00:00:00 +0000</pubDate>
+				<guid>https://arifrohman.com/post/include-subfolders-in-windows-11-wallpaper-slideshow/</guid>
+				<description>Learn how to include images from subfolders in your Windows 11 wallpaper slideshow by using a PowerShell script to create symbolic links.</description>
+			</item>
+	</channel>
+</rss>

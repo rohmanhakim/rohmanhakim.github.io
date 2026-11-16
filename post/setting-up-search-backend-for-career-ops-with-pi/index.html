@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Setting Up the Search Backend for career-ops with Pi | Arif&#39;s Homepage</title>
+    <link rel="stylesheet" href="/css/style.css" />
+    <link rel="stylesheet" href="/css/fonts.css" />
+    
+  
+    <meta name="description" content="Guide to setting up career-ops&#39; search backends in Pi: wigolo local search, DuckDuckGo behind an ISP DNS hijack, free Jina and Tavily keys, and the career-ops Tavily/Serper plugins. Includes the quirks that make each one fail silently and how to verify everything actually works." />
+  
+  <link rel="stylesheet" href="/css/mini-toc.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Source+Sans+3:ital,wght@0,200..900;1,200..900&display=swap" rel="stylesheet">
+  
+
+<link rel="stylesheet" href="/css/custom.css">
+<link rel="stylesheet" href="/css/yahoo.css">
+
+
+<link rel="alternate" type="application/rss+xml" title="Arif&#39;s Homepage - RSS Feed" href="https://arifrohman.com/index.xml" />
+
+<link rel="alternate" type="application/rss+xml" title="Arif&#39;s Homepage - Posts RSS Feed" href="https://arifrohman.com/post/index.xml" />
+
+
+
+
+
+<script data-goatcounter="https://arifrohman.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
+<div class="header-container">
+  <h1><a href="/">Arif's Homepage</a></h1>
+  <ul>
+    <li>
+      <a href="https://www.linkedin.com/in/rohmanhakim/">LinkedIn</a>
+    </li>
+    <li>
+      <a href="https://github.com/rohmanhakim/">GitHub</a>
+    </li>
+    <li>
+      <a href="/about">About</a>
+    </li>
+    <li>
+      <a href="/index.xml" title="RSS Feed">RSS</a>
+    </li>
+  </ul>
+  <button id="btn-switch-theme">Switch to dark Theme</button>
+</div>
+  </head>
+
+  <body>
+
+<div class="article-meta">
+  <h1><span class="title">Setting Up the Search Backend for career-ops with Pi</span></h1>
+  
+</div>
+
+<main>
+  <article>
+    <p>I set up <a href="https://github.com/santifer/career-ops">career-ops</a> recently to run my job search pipeline, and everything core worked out of the box: the tracker, the evaluation reports, the CV generation. But the moment I asked Pi to actually <em>search the web</em> (research a company, verify a job posting is real, dig into a salary range), everything fell over. Every single search backend was either down or not set up. DuckDuckGo failed with a bare <code>fetch failed</code>. The local provider complained about a daemon nobody had ever started. Jina returned <code>401 Unauthorized</code>. Tavily didn&rsquo;t even show up in the list of available providers.</p>
+<p>Turns out each of those four failures had a completely different root cause, and three of them were free to fix with no infrastructure at all. This post walks through how I diagnosed and fixed all of them, plus the two career-ops search plugins, so you end up with a working search stack where every component is either fully keyless or on a free tier.</p>
+<blockquote>
+<p>There are paid tiers involved here (Tavily, Serper, Jina all sell plans), but everything in this post runs on their free offerings or on local software. I&rsquo;ll flag the paid path only where it exists.</p>
+</blockquote>
+<hr>
+<h2 id="but-first-what-are-we-even-talking-about">But first, what are we even talking about?</h2>
+<p>Since this post assumes you already use career-ops, I&rsquo;ll keep this short. Two tools matter for the rest of the article.</p>
+<p><strong>career-ops</strong> is an AI-powered job search pipeline that runs inside your coding CLI. It scans company career boards for openings, evaluates job descriptions against your profile, generates tailored CVs, and tracks everything in a markdown tracker. It&rsquo;s CLI-agnostic: the same pipeline runs in Claude Code, Codex, OpenCode, and Pi. Its scanning core (the part that hits Greenhouse, Lever, Ashby, and Workday APIs) is deliberately zero-token and doesn&rsquo;t need any search backend at all. The search backends this post is about power the <em>research</em> side: verifying a posting is legit, company deep-dives, and general web lookups the agent does on your behalf.</p>
+<p><strong>Pi</strong> is the coding agent CLI I run career-ops in. Like the others, it can read your project, run commands, and call tools. Out of the box it&rsquo;s deliberately minimal though: its core tool set is files, shell, and editing. It has no built-in web search, which is exactly what the next term solves.</p>
+<p><strong>unipi</strong> is a third-party extension package for Pi (by Neuron Mr White, published on npm as <code>@pi-unipi/web-api</code>) that adds the web tooling: <code>web_search</code>, <code>multi_web_content_read</code>, and <code>web_llm_summarize</code>. Everything in this post lives inside it. It&rsquo;s provider-based: instead of one hardcoded search engine, it keeps a ranked list of interchangeable backends, and every call can name which backend to use or fall through the list automatically. It also owns the <code>~/.unipi/config/web-api/</code> config directory and the <code>/unipi:web-settings</code> command. If you open Pi and there&rsquo;s no <code>web_search</code> tool at all, this is the piece you&rsquo;re missing, and the first prerequisite below handles it.</p>
+<p>A few more terms, because this setup is dense with them:</p>
+<p><strong>Search backend / provider</strong> is one specific source of web search (or page fetching). Pi&rsquo;s web API ships several, mixing local software and hosted APIs.</p>
+<p><strong>Source rank</strong> is the number you pass to <code>web_search</code> to pick a backend explicitly. Without it, Pi walks the list cheapest-first and falls through on failure, which is why a single broken backend usually just makes searches slower instead of dead. Explicit ranks: <strong>1</strong> wigolo, <strong>2</strong> DuckDuckGo, <strong>3</strong> Jina Search, <strong>4</strong> SerpAPI, <strong>5</strong> Tavily, <strong>6</strong> Perplexity.</p>
+<p><strong>wigolo</strong> is a local-first web intelligence tool. It runs a daemon on your machine that searches multiple engines, caches pages, and can even rerank results with a small local ML model. No API key, no account, no rate limits (beyond your own bandwidth). It&rsquo;s Pi&rsquo;s rank-1 provider.</p>
+<p><strong>Jina AI Search</strong> is a hosted search API with a free tier. You send a query, it returns structured results. Access needs an API key these days.</p>
+<p><strong>Tavily</strong> is a search API built specifically for AI agents (results come back as clean content chunks instead of snippets). Also free-tier with a key.</p>
+<p><strong>Serper</strong> is a Google Search API (results via Google&rsquo;s programmable search backbone), free tier, also keyed. In career-ops it ships as a plugin rather than a built-in Pi provider.</p>
+<p><strong>API key</strong> is a unique string that authenticates your requests with a hosted service. Each of the keyed providers gives you one when you sign up.</p>
+<p><strong>ISP-level DNS hijack</strong> is the sneaky one, and it deserves its own callout because it looks exactly like &ldquo;the internet is broken&rdquo; from the tool&rsquo;s side. Your router asks your ISP&rsquo;s resolver &ldquo;what IP is duckduckgo.com?&rdquo;, and instead of the real answer, the ISP returns the IP of a block page. Some ISPs do this to censor sites. The tool then connects to the wrong server, TLS fails, and you get <code>fetch failed</code> with zero hints about the actual cause.</p>
+<hr>
+<h2 id="how-the-backend-is-structured-and-where-config-lives">How the backend is structured (and where config lives)</h2>
+<p>Before fixing things, it helps to know where unipi keeps its search configuration, because it&rsquo;s two small files in one directory:</p>
+<pre tabindex="0"><code>~/.unipi/config/web-api/
+├── auth.json     # API keys, keyed by provider id
+└── config.json   # provider enablement + overrides
+</code></pre><p><code>auth.json</code> is a flat map of <code>provider-id → key</code>. <code>config.json</code> holds provider settings like <code>enabled</code>. Both are read on every search call, so edits apply immediately, no Pi restart needed (the exception being environment variables, which are read once at process start).</p>
+<p>The defaults, as shipped:</p>
+<table>
+	<thead>
+			<tr>
+					<th>Rank</th>
+					<th>Provider</th>
+					<th>Needs API key</th>
+					<th>Enabled by default</th>
+			</tr>
+	</thead>
+	<tbody>
+			<tr>
+					<td>1</td>
+					<td>wigolo (local)</td>
+					<td>No</td>
+					<td>Yes (but needs <code>wigolo init</code>)</td>
+			</tr>
+			<tr>
+					<td>2</td>
+					<td>DuckDuckGo</td>
+					<td>No</td>
+					<td>Yes</td>
+			</tr>
+			<tr>
+					<td>3</td>
+					<td>Jina Search</td>
+					<td>No*</td>
+					<td>Yes</td>
+			</tr>
+			<tr>
+					<td>4</td>
+					<td>SerpAPI</td>
+					<td>Yes</td>
+					<td><strong>No</strong></td>
+			</tr>
+			<tr>
+					<td>5</td>
+					<td>Tavily</td>
+					<td>Yes</td>
+					<td><strong>No</strong></td>
+			</tr>
+			<tr>
+					<td>6</td>
+					<td>Perplexity</td>
+					<td>Yes</td>
+					<td><strong>No</strong></td>
+			</tr>
+	</tbody>
+</table>
+<p>* more on this one later, because &ldquo;no key needed&rdquo; is quietly no longer true.</p>
+<p>There&rsquo;s also an interactive settings UI for all of this: run <code>/unipi:web-settings</code> inside Pi. Editing the JSON files by hand works too, and for scripting I prefer it.</p>
+<hr>
+<h2 id="prerequisites">Prerequisites</h2>
+<p>Before starting, make sure you have:</p>
+<ul>
+<li>
+<p><strong>Pi</strong> installed and running (this post uses v1.x)</p>
+</li>
+<li>
+<p><strong>The unipi extension</strong>, since Pi core ships no web tools. Pi has its own package manager for exactly this, so inside Pi run:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>pi install npm:@pi-unipi/web-api
+</span></span></code></pre></div><p><code>pi list</code> should show it afterwards, and Pi will now expose the three web tools plus the <code>/unipi:web-settings</code> command. Note this is third-party code that executes inside your agent session, so the usual Pi package trust rules apply: review the source before installing. On first run it creates its config directory, which the rest of this post edits by hand.</p>
+</li>
+<li>
+<p><strong>The <code>browser_search</code> tool</strong>, referenced in a couple of steps below, is a <em>separate</em> Pi package (<code>pi-browser-search</code>), installed the same way: <code>pi install npm:pi-browser-search</code>. It&rsquo;s optional for the search backend itself, but the DNS fix in Step 2 repairs it too.</p>
+</li>
+<li>
+<p><strong>A career-ops checkout</strong> (only needed for the plugin section at the end)</p>
+</li>
+<li>
+<p><strong>API keys: none required upfront.</strong> The two free ones are created mid-post, and everything else is keyless.</p>
+</li>
+</ul>
+<hr>
+<h2 id="step-0-find-out-whats-actually-broken">Step 0: Find out what&rsquo;s actually broken</h2>
+<p>Don&rsquo;t configure anything yet. Test each rank first, by asking Pi directly (if the <code>web_search</code> tool doesn&rsquo;t exist at all, go back to the prerequisites):</p>
+<blockquote>
+<p><em>&ldquo;Search the web for &rsquo;nodejs release schedule&rsquo; using source 2&rdquo;</em></p>
+</blockquote>
+<p>or in one shot per backend. When I did this on a fresh install, the diagnosis came out surprisingly clean:</p>
+<table>
+	<thead>
+			<tr>
+					<th>Backend</th>
+					<th>Error</th>
+					<th>Root cause</th>
+			</tr>
+	</thead>
+	<tbody>
+			<tr>
+					<td>wigolo (1)</td>
+					<td>daemon could not be reached / ENOENT</td>
+					<td>Never installed or initialized</td>
+			</tr>
+			<tr>
+					<td>DuckDuckGo (2)</td>
+					<td><code>fetch failed</code></td>
+					<td>ISP DNS hijack (spoiler)</td>
+			</tr>
+			<tr>
+					<td>Jina (3)</td>
+					<td><code>401 Unauthorized</code></td>
+					<td>Keyless search discontinued; needs a free key</td>
+			</tr>
+			<tr>
+					<td>Tavily (5)</td>
+					<td><code>No provider at rank 5</code></td>
+					<td>Shipped <code>enabled: false</code></td>
+			</tr>
+	</tbody>
+</table>
+<p>Four failures, four different causes. Fixing them in order of increasing weirdness.</p>
+<hr>
+<h2 id="step-1-wigolo--the-free-local-backend">Step 1: wigolo — the free local backend</h2>
+<p>wigolo is the only fully local option in the list: no account, no key, no monthly quota. It just needs a one-time setup. The Pi docs phrase the failure helpfully: install a REST-capable wigolo (newer than <code>0.1.43-beta.2</code>) and run its init.</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>npm install -g wigolo@latest
+</span></span><span style="display:flex;"><span>wigolo init
+</span></span></code></pre></div><p><code>wigolo init</code> checks your system, then downloads its components: a semantic embeddings model (BGE-small-en-v1.5), a cross-encoder reranker (ms-marco-MiniLM-L-6-v2), and browser engines for JS-heavy pages. The models are small (tens to hundreds of MB) and cached under <code>~/.wigolo</code>.</p>
+<p>Two things worth knowing from my run:</p>
+<ul>
+<li>The browser engine downloads (Chromium, Firefox, WebKit) go through Playwright&rsquo;s CDN. On a slow or restricted network they can time out. <strong>This is fine.</strong> Init reports the failure, falls back to a multi-engine HTTP backend for search, and marks <code>requiredFailed: false</code>. You can retry browsers later with <code>wigolo warmup --browser</code> — you only truly need them for scraping JavaScript-rendered pages, not for search.</li>
+<li>The old SearXNG sidecar is no longer part of the default setup; current wigolo uses its multi-engine core backend directly.</li>
+</ul>
+<p>Once init finishes, you can start the daemon explicitly if you want to inspect it:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>wigolo serve      <span style="color:#75715e"># daemon on 127.0.0.1:3333, loopback only</span>
+</span></span><span style="display:flex;"><span>wigolo health     <span style="color:#75715e"># should print {&#34;status&#34;:&#34;healthy&#34;,...}</span>
+</span></span></code></pre></div><p>In practice you don&rsquo;t need to manage this yourself: Pi&rsquo;s web API client starts the daemon lazily on first use and reuses it (it&rsquo;s expensive to boot, so it&rsquo;s a cached singleton). I started it manually once just to confirm health, and let Pi handle it after that.</p>
+<p>Quick verification, rank 1:</p>
+<blockquote>
+<p><em>&ldquo;Search the web for &lsquo;best ATS friendly resume template&rsquo; using source 1&rdquo;</em></p>
+</blockquote>
+<p>Real results, zero tokens, zero API keys.</p>
+<hr>
+<h2 id="step-2-duckduckgo--when-fetch-failed-is-actually-your-isp">Step 2: DuckDuckGo — when &ldquo;fetch failed&rdquo; is actually your ISP</h2>
+<p>This one is my favorite because nothing in the error message points at the real cause. DuckDuckGo is enabled by default and needs no key, so on a normal network it just works. Mine didn&rsquo;t:</p>
+<pre tabindex="0"><code>Search failed: DuckDuckGo: fetch failed
+</code></pre><p>Bare <code>fetch failed</code> usually means a network-level problem, so I checked connectivity directly with <code>curl</code>. Other sites were fine, but duckduckgo.com specifically failed TLS verification with a hostname mismatch. Then the resolver check made it obvious:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>$ getent hosts duckduckgo.com
+</span></span><span style="display:flex;"><span>114.7.173.245   internetpositif.ioh.co.id duckduckgo.com
+</span></span></code></pre></div><p>My ISP&rsquo;s resolver was answering with a block page instead of the real site. I confirmed the block was DNS-only (not IP-level) two ways: resolving through a public DoH endpoint returned the real IP (<code>20.43.161.105</code>), and connecting to that IP directly with the right hostname via <code>curl --resolve</code> returned a clean <code>200</code>. So the fix was simply: stop using the ISP&rsquo;s resolver.</p>
+<blockquote>
+<p><strong>For Indonesian readers:</strong> this specific block page (<code>internetpositif.ioh.co.id</code>) is the ISP-level filtering used by some Indonesian providers. If any site fails for you with a TLS or &ldquo;fetch failed&rdquo; error while others load fine, run <code>getent hosts &lt;domain&gt;</code> (or <code>nslookup</code>) first. A weird hostname in the answer is your smoking gun. Note that the same fix also restores <code>browser_search</code> in Pi, which routes through the same network stack.</p>
+</blockquote>
+<p>On Linux with NetworkManager, pointing the connection at public resolvers is two commands (run <code>nmcli -t -f NAME,DEVICE con show --active</code> to get your connection name):</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>sudo nmcli con mod <span style="color:#e6db74">&#34;&lt;your-connection&gt;&#34;</span> ipv4.dns <span style="color:#e6db74">&#34;1.1.1.1 9.9.9.9&#34;</span> ipv4.ignore-auto-dns yes
+</span></span><span style="display:flex;"><span>sudo nmcli con up <span style="color:#e6db74">&#34;&lt;your-connection&gt;&#34;</span>
+</span></span></code></pre></div><p>That&rsquo;s durable across reboots. After it applied, DuckDuckGo and <code>browser_search</code> both came back immediately. No key, no restart.</p>
+<p>One caveat: this fixes DNS resolution, and it was enough for me because the block was DNS-only. If an ISP blocks by IP or SNI instead, you&rsquo;d need encrypted DNS (DoH/DoT) or a VPN. Check with the <code>curl --resolve</code> trick above before assuming.</p>
+<hr>
+<h2 id="step-3-jina--a-free-key-plus-the-quirk-that-hides-it">Step 3: Jina — a free key, plus the quirk that hides it</h2>
+<p>Jina Search is enabled by default and was, for a long time, usable keyless. Not anymore: every call came back <code>401 Unauthorized</code>. The fix is signing up at <a href="https://jina.ai">jina.ai</a> and grabbing a free API key (it starts with <code>jina_</code>, and the free tier comes with daily credits that are plenty for research-sized usage).</p>
+<p>You can verify the key immediately with curl, outside of Pi entirely:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>curl <span style="color:#e6db74">&#34;https://s.jina.ai/?q=node.js%20release%20schedule&#34;</span> <span style="color:#ae81ff">\
+</span></span></span><span style="display:flex;"><span>  -H <span style="color:#e6db74">&#34;Authorization: Bearer jina_XXXX&#34;</span>
+</span></span></code></pre></div><p><code>200</code> with real results? Key is good. Now the quirk.</p>
+<p><strong>Where you put the key depends on an implementation detail that will waste an hour if you don&rsquo;t know it.</strong> Pi&rsquo;s search tool only attaches keys from <code>auth.json</code> to providers that are marked <code>requiresApiKey: true</code> (SerpAPI, Tavily, Perplexity). Jina is marked as optional-key, so its <code>auth.json</code> entry is silently ignored, and the provider falls back to an environment variable instead: <code>JINA_API_KEY</code>.</p>
+<p>So the working setup is the env var, exported where your shell can see it:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span><span style="color:#75715e"># ~/.bashrc (and ~/.profile for login shells)</span>
+</span></span><span style="display:flex;"><span>export JINA_API_KEY<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;jina_XXXX&#34;</span>
+</span></span></code></pre></div><p>If you want it to survive even terminal-less launches (desktop entries, systemd user services), mirror it too:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>mkdir -p ~/.config/environment.d
+</span></span><span style="display:flex;"><span>echo <span style="color:#e6db74">&#34;JINA_API_KEY=jina_XXXX&#34;</span> &gt; ~/.config/environment.d/99-web-search.conf
+</span></span></code></pre></div><p>Two follow-ups that bit me:</p>
+<ul>
+<li><strong>Environment variables are read at process start.</strong> If Pi is already running when you export the key, the current session keeps failing with <code>401</code> until you restart Pi. Worse, if you restart Pi from a terminal that was opened <em>before</em> the export existed, it still won&rsquo;t see it. New terminal, then relaunch.</li>
+<li><strong>Jina snippets may render as <code>undefined</code>.</strong> The provider code maps a <code>snippet</code> field, but Jina&rsquo;s JSON actually returns <code>description</code>. Search results still come back (titles and URLs are fine), just without snippet text. If it bothers you, it&rsquo;s a one-line patch in the provider file <code>@pi-unipi/web-api/src/providers/jina-search.ts</code>:</li>
+</ul>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-ts" data-lang="ts"><span style="display:flex;"><span><span style="color:#a6e22e">snippet</span>: <span style="color:#66d9ef">item.snippet</span> <span style="color:#f92672">||</span> <span style="color:#a6e22e">item</span>.<span style="color:#a6e22e">description</span> <span style="color:#f92672">||</span> <span style="color:#e6db74">&#34;&#34;</span>,
+</span></span></code></pre></div><blockquote>
+<p><strong>A note on patching node_modules:</strong> this patch lives in Pi&rsquo;s installed packages, so the next package update will revert it. That&rsquo;s acceptable for a one-liner you can re-apply (or upstream may have fixed it by the time you read this), but be aware it&rsquo;s a local modification, not a durable fix.</p>
+</blockquote>
+<p>After the restart, rank 3 works.</p>
+<hr>
+<h2 id="step-4-tavily--the-key-isnt-enough-it-ships-disabled">Step 4: Tavily — the key isn&rsquo;t enough, it ships disabled</h2>
+<p>Tavily&rsquo;s free tier (1,000 credits/month at time of writing) covers research comfortably. Sign up at <a href="https://www.tavily.com">tavily.com</a>, get your key (<code>tvly-...</code>), verify it with curl:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>curl https://api.tavily.com/search <span style="color:#ae81ff">\
+</span></span></span><span style="display:flex;"><span>  -H <span style="color:#e6db74">&#34;Content-Type: application/json&#34;</span> <span style="color:#ae81ff">\
+</span></span></span><span style="display:flex;"><span>  -H <span style="color:#e6db74">&#34;Authorization: Bearer tvly-XXXX&#34;</span> <span style="color:#ae81ff">\
+</span></span></span><span style="display:flex;"><span>  -d <span style="color:#e6db74">&#39;{&#34;query&#34;:&#34;node.js release schedule&#34;,&#34;max_results&#34;:2}&#39;</span>
+</span></span></code></pre></div><p>Then, unlike Jina, this key <strong>does</strong> go into <code>auth.json</code> — that part works as expected:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-json" data-lang="json"><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">&#34;jina-search&#34;</span>: <span style="color:#e6db74">&#34;jina_XXXX&#34;</span>,
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">&#34;tavily&#34;</span>: <span style="color:#e6db74">&#34;tvly-XXXX&#34;</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>Keep that file private while you&rsquo;re at it (<code>chmod 600</code>); it&rsquo;s a flat file of live credentials.</p>
+<p>But the search will still fail with <code>No provider at rank 5 for search. Available ranks: 1, 2, 3</code>. The provider ships <strong><code>enabled: false</code></strong> by default. Flip it in <code>config.json</code>:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-json" data-lang="json"><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">&#34;providers&#34;</span>: {
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">&#34;tavily&#34;</span>: { <span style="color:#f92672">&#34;enabled&#34;</span>: <span style="color:#66d9ef">true</span> }
+</span></span><span style="display:flex;"><span>  }
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>Config is read per call, so no restart needed. Rank 5 immediately returns full results.</p>
+<hr>
+<h2 id="step-5-the-career-ops-side--tavily-and-serper-plugins">Step 5: The career-ops side — Tavily and Serper plugins</h2>
+<p>Pi&rsquo;s <code>web_search</code> and career-ops&rsquo; own plugin system are separate layers. The plugins give the <em>pipeline</em> (scans, liveness checks, company research) direct access to Tavily and Serper, independent of whatever Pi&rsquo;s agent tools are doing. Both are approved community plugins.</p>
+<p>Keys for career-ops plugins live in a <code>.env</code> file in the career-ops repo root (gitignored, same pattern as any dotenv setup):</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>TAVILY_API_KEY<span style="color:#f92672">=</span>tvly-XXXX
+</span></span><span style="display:flex;"><span>SERPER_API_KEY<span style="color:#f92672">=</span>XXXX
+</span></span></code></pre></div><p>Then install and enable:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>node plugins.mjs add career-ops-plugin-tavily
+</span></span><span style="display:flex;"><span>node plugins.mjs enable tavily --confirm
+</span></span><span style="display:flex;"><span>node plugins.mjs add career-ops-plugin-serper
+</span></span><span style="display:flex;"><span>node plugins.mjs enable serper --confirm
+</span></span></code></pre></div><p><strong>Serper</strong> is a <code>provider</code>-type plugin, so <code>plugins.mjs run serper</code> will correctly tell you it only runs through the scanner (a <code>provider: serper</code> entry in <code>portals.yml</code>). Nothing to test standalone; the key verification you did with curl is enough.</p>
+<p><strong>Tavily</strong> exposes a <code>search</code> hook, and here I hit the third silent failure of this setup:</p>
+<pre tabindex="0"><code>⚠️  tavily: skipping — search hook failed — Cannot read properties of undefined (reading &#39;TAVILY_API_KEY&#39;)
+</code></pre><p>The engine calls search hooks as <code>hook(payload, ctx)</code>, but the plugin was written against an older <code>search(ctx)</code> signature — so the query string lands in the plugin&rsquo;s <code>ctx</code> slot, <code>ctx.env</code> is undefined, and the key lookup crashes. If you see this exact error, it&rsquo;s the signature mismatch, not a missing key. The plugin lives in <code>plugins.local/</code> (gitignored, local-only), so a small compat shim is safe:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-js" data-lang="js"><span style="display:flex;"><span><span style="color:#66d9ef">async</span> <span style="color:#a6e22e">search</span>(<span style="color:#a6e22e">payload</span>, <span style="color:#a6e22e">ctx</span>) {
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">let</span> <span style="color:#a6e22e">query</span> <span style="color:#f92672">=</span> <span style="color:#a6e22e">payload</span>;
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">if</span> (<span style="color:#a6e22e">payload</span> <span style="color:#f92672">&amp;&amp;</span> <span style="color:#66d9ef">typeof</span> <span style="color:#a6e22e">payload</span> <span style="color:#f92672">===</span> <span style="color:#e6db74">&#39;object&#39;</span> <span style="color:#f92672">&amp;&amp;</span> (<span style="color:#a6e22e">ctx</span> <span style="color:#f92672">===</span> <span style="color:#66d9ef">undefined</span> <span style="color:#f92672">||</span> <span style="color:#a6e22e">ctx</span> <span style="color:#f92672">===</span> <span style="color:#66d9ef">null</span>)) {
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">ctx</span> <span style="color:#f92672">=</span> <span style="color:#a6e22e">payload</span>; <span style="color:#a6e22e">query</span> <span style="color:#f92672">=</span> <span style="color:#66d9ef">undefined</span>;
+</span></span><span style="display:flex;"><span>  }
+</span></span><span style="display:flex;"><span>  <span style="color:#75715e">// ...use ctx.env, use query if present, else build from ctx.settings
+</span></span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>career-ops hashes plugin files and refuses to load a plugin whose files changed without a re-trust, so after editing you&rsquo;ll get a &ldquo;files changed since you trusted it&rdquo; warning. Review your own diff, then:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>node plugins.mjs trust tavily
+</span></span><span style="display:flex;"><span>node plugins.mjs run tavily search <span style="color:#e6db74">&#34;senior applied ai engineer remote&#34;</span> --dry-run
+</span></span></code></pre></div><p><code>--dry-run</code> matters here: without it, results get appended to your <code>data/pipeline.md</code> inbox. With it, you should see real jobs listed and &ldquo;pipeline not written&rdquo;. (One debugging note that cost me a false alarm: the <code>injected env (0) from .env</code> line in the output is not an error. <code>scan.mjs</code> loads dotenv quietly at import time, so the banner only counts <em>newly</em> injected variables, which is zero when they&rsquo;re already loaded.)</p>
+<hr>
+<h2 id="verification-matrix">Verification matrix</h2>
+<p>The end state, and how to test each row yourself:</p>
+<table>
+	<thead>
+			<tr>
+					<th>Backend</th>
+					<th>Type</th>
+					<th>Cost</th>
+					<th>Test</th>
+			</tr>
+	</thead>
+	<tbody>
+			<tr>
+					<td>wigolo (source 1)</td>
+					<td>local daemon</td>
+					<td>free</td>
+					<td>&ldquo;search &hellip; using source 1&rdquo;</td>
+			</tr>
+			<tr>
+					<td>DuckDuckGo (source 2)</td>
+					<td>keyless API</td>
+					<td>free</td>
+					<td>&ldquo;search &hellip; using source 2&rdquo;</td>
+			</tr>
+			<tr>
+					<td>Jina (source 3)</td>
+					<td>keyed API</td>
+					<td>free tier</td>
+					<td>&ldquo;search &hellip; using source 3&rdquo;</td>
+			</tr>
+			<tr>
+					<td>Tavily (source 5)</td>
+					<td>keyed API</td>
+					<td>free tier</td>
+					<td>&ldquo;search &hellip; using source 5&rdquo;</td>
+			</tr>
+			<tr>
+					<td><code>browser_search</code></td>
+					<td>built-in browser</td>
+					<td>free</td>
+					<td>any JS-rendered page lookup</td>
+			</tr>
+			<tr>
+					<td>career-ops <code>tavily</code> plugin</td>
+					<td>pipeline search</td>
+					<td>free tier</td>
+					<td><code>node plugins.mjs run tavily search &quot;q&quot; --dry-run</code></td>
+			</tr>
+			<tr>
+					<td>career-ops <code>serper</code> plugin</td>
+					<td>pipeline provider</td>
+					<td>free tier</td>
+					<td><code>provider: serper</code> in portals.yml + a scan</td>
+			</tr>
+	</tbody>
+</table>
+<p>Two habits worth keeping: rotate any key that&rsquo;s ever been pasted somewhere it shouldn&rsquo;t be (chat transcripts count), and remember that aggregator listings that surface through any of these backends are unconfirmed until checked against the employer&rsquo;s own careers page — that discipline is baked into career-ops for good reason.</p>
+<p>Also worth repeating: none of this is required for career-ops&rsquo; core scanning. The ATS scanning paths are zero-token and unaffected. This stack is what makes the <em>research</em> muscle work: verifying postings, digging into companies, and generally letting the agent look things up without you babysitting each lookup.</p>
+<hr>
+<h2 id="recap">Recap</h2>
+<ol>
+<li>Install the unipi extension first — Pi core has no web tools, and every backend in this post hangs off it</li>
+<li>Test each source rank before configuring anything — four errors usually mean four different causes</li>
+<li>wigolo: <code>npm i -g wigolo@latest &amp;&amp; wigolo init</code>, let Pi manage the daemon, browser engines are optional</li>
+<li>DuckDuckGo: if it fails while everything else works, check your resolver — an ISP DNS hijack masquerades as <code>fetch failed</code>; fix it at the NetworkManager level</li>
+<li>Jina: grab a free key, put it in <code>JINA_API_KEY</code> (not <code>auth.json</code> — optional-key providers ignore it), restart Pi from a fresh terminal</li>
+<li>Tavily: free key goes in <code>auth.json</code>, but you must also enable the provider in <code>config.json</code></li>
+<li>career-ops plugins: keys in <code>.env</code>, <code>plugins.mjs add</code> + <code>enable --confirm</code>, shim the Tavily search signature if you hit the <code>ctx.env</code> crash, <code>trust</code> after any local edit</li>
+<li>Verify everything with explicit source ranks and <code>--dry-run</code> before letting results into your pipeline</li>
+</ol>
+<p>Thank&rsquo;s for reading, and happy coding!</p>
+
+  </article>
+  <nav id="mini-toc" aria-label="Table of contents">
+    
+  </nav>
+  <script>
+    (function () {
+      const toc = document.getElementById('mini-toc');
+      if (!toc) return;
+
+      
+      const headings = Array.from(
+        document.querySelectorAll('article h2, article h3')
+      );
+
+      if (headings.length === 0) return;
+
+      
+      headings.forEach((h) => {
+        
+        if (!h.id) {
+          h.id = h.textContent.trim()
+            .toLowerCase()
+            .replace(/[^\w\s-]/g, '')
+            .replace(/\s+/g, '-');
+        }
+
+        const a = document.createElement('a');
+        a.href = '#' + h.id;
+        a.textContent = h.textContent;
+        
+        if (h.tagName === 'H3') a.style.paddingLeft = '1rem';
+        toc.appendChild(a);
+      });
+
+      
+      const links = Array.from(toc.querySelectorAll('a'));
+
+      function onScroll() {
+        let current = headings[0];
+        for (const h of headings) {
+          if (h.getBoundingClientRect().top <= 120) {
+            current = h;
+          }
+        }
+        links.forEach((a) => {
+          a.classList.toggle('active', a.getAttribute('href') === '#' + current.id);
+        });
+      }
+
+      window.addEventListener('scroll', onScroll, { passive: true });
+      onScroll(); 
+    })();
+  </script>
+</main>
+
+<div class="comment">
+  <script src="https://utteranc.es/client.js" repo="rohmanhakim/rohmanhakim.github.io" issue-term="pathname"
+    theme="github-light" crossorigin="anonymous" async>
+    </script>
+</div>
+
+
+  <footer>
+  <script>
+  const btnSwitchTheme = document.getElementById("btn-switch-theme")
+
+  function getTheme() {
+    const cookies = Object.fromEntries(
+      document.cookie.split("; ").map(c => c.split("="))
+    );
+    return cookies.theme || "light";
+  }
+
+  function invertTheme(theme) {
+    return theme == "light" ? "dark" : "light"
+  }
+
+  function applyTheme(toTheme) {
+    btnSwitchTheme.textContent = "Switch to " + invertTheme(toTheme) + " theme"
+    document.querySelector("html").style = toTheme == "dark" ? "filter: invert(1);" : ""
+    neuralizeChildrenColor("img", toTheme)
+    neuralizeChildrenColor("button", toTheme)
+    neuralizeChildrenColor(".resume-download-button", toTheme)
+    neuralizeChildrenColor(".highlight", toTheme)
+  }
+
+  function neuralizeChildrenColor(child, toTheme) {
+    document.querySelectorAll(child).forEach(el => {
+      el.style = toTheme == "dark" ? "filter: invert(1);" : ""
+    })
+  }
+
+  btnSwitchTheme.addEventListener("click", (event) => {
+    const theme = getTheme()
+    const newTheme = invertTheme(theme)
+    document.cookie = "theme=" + newTheme + ";path=/"
+    applyTheme(newTheme)
+  })
+
+  applyTheme(getTheme())
+</script>
+<div class="footer-container">
+  <p>Copyright © 2026 <a href="/">Muhammad Arif Rohman Hakim</a></p>
+  <ul>
+    <li>
+      <a href="https://www.linkedin.com/in/rohmanhakim/">LinkedIn</a>
+    </li>
+    <li>
+      <a href="https://github.com/rohmanhakim/">GitHub</a>
+    </li>
+    <li>
+      <a href="/about">About</a>
+    </li>
+    <li>
+      <a href="/index.xml" title="RSS Feed">RSS</a>
+    </li>
+  </ul>
+</div>
+  
+  </footer>
+  </body>
+</html>

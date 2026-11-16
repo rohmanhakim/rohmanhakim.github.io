@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Auditing Retro ROMs with Go: Building a Hash-Based Identification Tool | Arif&#39;s Homepage</title>
+    <link rel="stylesheet" href="/css/style.css" />
+    <link rel="stylesheet" href="/css/fonts.css" />
+    
+  
+    <meta name="description" content="Building a Go tool to audit retro ROM collections using content hashing and DAT databases." />
+  
+  <link rel="stylesheet" href="/css/mini-toc.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Source+Sans+3:ital,wght@0,200..900;1,200..900&display=swap" rel="stylesheet">
+  
+
+<link rel="stylesheet" href="/css/custom.css">
+<link rel="stylesheet" href="/css/yahoo.css">
+
+
+<link rel="alternate" type="application/rss+xml" title="Arif&#39;s Homepage - RSS Feed" href="https://arifrohman.com/index.xml" />
+
+<link rel="alternate" type="application/rss+xml" title="Arif&#39;s Homepage - Posts RSS Feed" href="https://arifrohman.com/post/index.xml" />
+
+
+
+
+
+<script data-goatcounter="https://arifrohman.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
+<div class="header-container">
+  <h1><a href="/">Arif's Homepage</a></h1>
+  <ul>
+    <li>
+      <a href="https://www.linkedin.com/in/rohmanhakim/">LinkedIn</a>
+    </li>
+    <li>
+      <a href="https://github.com/rohmanhakim/">GitHub</a>
+    </li>
+    <li>
+      <a href="/about">About</a>
+    </li>
+    <li>
+      <a href="/index.xml" title="RSS Feed">RSS</a>
+    </li>
+  </ul>
+  <button id="btn-switch-theme">Switch to dark Theme</button>
+</div>
+  </head>
+
+  <body>
+
+<div class="article-meta">
+  <h1><span class="title">Auditing Retro ROMs with Go: Building a Hash-Based Identification Tool</span></h1>
+  
+</div>
+
+<main>
+  <article>
+    <p>I have an <a href="https://anbernic.com/products/rg-cubexx">Anbernic RG CubeXX</a>, a retro gaming handheld that came pre-loaded with thousands of ROM files on its microSD card. The ROMs were renamed, mislabeled, or stripped of metadata. I wanted to join <a href="https://retroachievements.org/">RetroAchievements</a>, a platform that tracks achievements for retro games, but it requires specific ROM versions: if your ROM doesn&rsquo;t match their database, achievements won&rsquo;t show up. So I built <a href="https://github.com/rohmanhakim/rom-lookup"><code>rom-lookup</code></a>, a Go tool that identifies ROMs by their content hash and resolves them to canonical names.</p>
+<h2 id="what-are-roms">What Are ROMs?</h2>
+<p>If you&rsquo;re not from the retro gaming world, a quick primer: a <strong>ROM</strong> (Read-Only Memory) is a digital copy of a game cartridge or disc. When someone &ldquo;dumps&rdquo; a game from a physical cartridge, they get a binary file — a ROM. These files carry the exact bytes that the original hardware would read.</p>
+<p>The problem is that ROM files are often renamed, organized inconsistently, or modified. Two files named <code>GoldenSun.gba</code> could be completely different versions of the game — different regions, different dump sources, or even hacked modifications. The filename tells you almost nothing about what&rsquo;s actually inside.</p>
+<h2 id="the-problem">The Problem</h2>
+<p>Here&rsquo;s what my ROM collection looked like:</p>
+<pre tabindex="0"><code>GBA/
+├── 001 Golden Sun.gba
+├── 002 Tekken Advance.gba
+├── 003 Crash Bandicoot.gba
+└── ...
+</code></pre><p>Is <code>001 Golden Sun.gba</code> the USA version? Europe? Is it the original dump or a modified ROM? For RetroAchievements compatibility, I need to know the exact version. Renaming the files manually would take forever, and I&rsquo;d still be guessing.</p>
+<h2 id="the-solution-at-a-glance">The Solution at a Glance</h2>
+<p><a href="https://github.com/rohmanhakim/rom-lookup"><code>rom-lookup</code></a> is a Go tool that answers one question: <strong>what is this ROM file, really?</strong> It has two modes:</p>
+<ul>
+<li><strong>CLI</strong> — scan files from your terminal and get instant identification</li>
+<li><strong>Library</strong> — embed the same logic in your own Go programs</li>
+</ul>
+<pre tabindex="0"><code>$ romlookup scan GBA/001\ Golden\ Sun.gba
+
+  [no-intro] Golden Sun (USA, Europe)
+    Region:   USA, Europe
+    Size:     16,777,216 bytes
+    CRC32:    DBEF116C
+</code></pre><p>The trick? It doesn&rsquo;t look at the filename at all. It reads the file&rsquo;s <strong>content hash</strong> — a mathematical fingerprint of the actual bytes — and matches it against a database of known ROMs.</p>
+<h2 id="content-hashing-the-core-idea">Content Hashing: The Core Idea</h2>
+<p>If filenames are unreliable, what can we trust? The file contents themselves.</p>
+<p>A <strong>hash function</strong> takes an arbitrary amount of data and produces a fixed-size string — a fingerprint. Change even one byte in the input, and the output changes completely. This means two identical files will always produce the same hash, regardless of what they&rsquo;re named.</p>
+<p>Three hash algorithms are commonly used in ROM databases:</p>
+<table>
+	<thead>
+			<tr>
+					<th>Algorithm</th>
+					<th>Output Size</th>
+					<th>Speed</th>
+					<th>Use Case</th>
+			</tr>
+	</thead>
+	<tbody>
+			<tr>
+					<td>CRC32</td>
+					<td>4 bytes</td>
+					<td>Very fast</td>
+					<td>Primary lookup key in No-Intro/Redump</td>
+			</tr>
+			<tr>
+					<td>MD5</td>
+					<td>16 bytes</td>
+					<td>Fast</td>
+					<td>Backup identifier, cross-database matching</td>
+			</tr>
+			<tr>
+					<td>SHA1</td>
+					<td>20 bytes</td>
+					<td>Moderate</td>
+					<td>Used by some Redump disc entries</td>
+			</tr>
+	</tbody>
+</table>
+<p><strong>CRC32</strong> (Cyclic Redundancy Check) is a checksum, not a cryptographic hash — it&rsquo;s fast but has a higher chance of collisions (two different files producing the same hash). That&rsquo;s why databases store all three: CRC32 for quick lookups, MD5/SHA1 to disambiguate when CRC32 matches multiple entries.</p>
+<p>The lookup flow is simple: compute all three hashes from the ROM file, then search the database by CRC32 first. If multiple entries match, narrow down with MD5 and SHA1.</p>
+<h2 id="dat-files-the-data-source">DAT Files: The Data Source</h2>
+<p>The hash database needs to come from somewhere. Fortunately, the retro gaming community maintains several well-known projects that catalog verified ROM dumps:</p>
+<ul>
+<li><strong><a href="https://no-intro.org/">No-Intro</a></strong> — Tracks cartridge-based ROMs (NES, SNES, GBA, Genesis, etc.). Each entry is verified against a known-good dump.</li>
+<li><strong><a href="http://redump.org/">Redump</a></strong> — Tracks disc-based ROMs (PlayStation, Dreamcast, CD-i). Focuses on exact disc images.</li>
+<li><strong><a href="https://www.tosecdev.org/">TOSEC</a></strong> — Covers home computers and arcade systems (Commodore 64, Amiga, arcade boards).</li>
+</ul>
+<p>These projects distribute their data as <strong>DAT files</strong> — a plain-text format originally created by <a href="https://mamedev.emulab.it/clrmamepro/">ClrMamePro</a>, a ROM management tool. Every major ROM manager (ClrMamePro, ROMVault, RomCenter) uses this format. It&rsquo;s the de facto standard.</p>
+<p>All three databases are freely available via <a href="https://github.com/libretro/libretro-database">libretro-database</a> on GitHub — no API keys, no rate limits, no paywalls.</p>
+<p>Here&rsquo;s what a DAT entry looks like:</p>
+<pre tabindex="0"><code>clrmamepro (
+    name &#34;Nintendo - Game Boy Advance&#34;
+    version &#34;2026.08.01&#34;
+)
+
+game (
+    name &#34;Advance Wars (USA)&#34;
+    region &#34;USA&#34;
+    rom ( name &#34;Advance Wars (USA).gba&#34; size 4194304 crc DBEF116C md5 27F322F5... )
+)
+</code></pre><p>Each <code>game</code> block contains a name, region, and a <code>rom</code> entry with the file size, CRC32, and MD5 hash. That&rsquo;s all we need: hash the ROM file, search for a matching CRC32, and we&rsquo;ve identified it.</p>
+<h2 id="implementation-deep-dive">Implementation Deep Dive</h2>
+<p>Now that we know <em>what</em> we&rsquo;re doing (hash files, search DAT databases), let&rsquo;s look at <em>how</em> it works in Go.</p>
+<h3 id="parsing-dat-files">Parsing DAT Files</h3>
+<p>The DAT format uses nested blocks with quoted strings — not JSON, not YAML, not XML. Parsing it means handling <code>(</code>, <code>)</code>, <code>&quot;</code>, and whitespace in the right order. I implemented a state-machine tokenizer:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#66d9ef">func</span> <span style="color:#a6e22e">Parse</span>(<span style="color:#a6e22e">raw</span> []<span style="color:#66d9ef">byte</span>) ([]<span style="color:#a6e22e">Game</span>, <span style="color:#66d9ef">error</span>) {
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">src</span> <span style="color:#f92672">:=</span> string(<span style="color:#a6e22e">raw</span>)
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">games</span> <span style="color:#f92672">:=</span> []<span style="color:#a6e22e">Game</span>{}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// Skip header block (clrmamepro metadata)</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> <span style="color:#a6e22e">strings</span>.<span style="color:#a6e22e">HasPrefix</span>(<span style="color:#a6e22e">src</span>, <span style="color:#e6db74">&#34;clrmamepro&#34;</span>) {
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">rest</span>, <span style="color:#a6e22e">_</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">skipBlock</span>(<span style="color:#a6e22e">src</span>)
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">src</span> = <span style="color:#a6e22e">rest</span>
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// Parse game blocks</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">for</span> <span style="color:#a6e22e">strings</span>.<span style="color:#a6e22e">HasPrefix</span>(<span style="color:#a6e22e">src</span>, <span style="color:#e6db74">&#34;game&#34;</span>) {
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">inner</span>, <span style="color:#a6e22e">rest</span>, <span style="color:#a6e22e">_</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">extractBlock</span>(<span style="color:#a6e22e">src</span>)
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">game</span>, <span style="color:#a6e22e">_</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">parseGameFields</span>(<span style="color:#a6e22e">inner</span>)
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">games</span> = append(<span style="color:#a6e22e">games</span>, <span style="color:#a6e22e">game</span>)
+</span></span><span style="display:flex;"><span>        <span style="color:#a6e22e">src</span> = <span style="color:#a6e22e">rest</span>
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">games</span>, <span style="color:#66d9ef">nil</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>The <code>skipBlock</code> and <code>extractBlock</code> functions track parenthesis nesting and extract the content between matching <code>(</code> and <code>)</code>. It&rsquo;s not glamorous, but it&rsquo;s reliable.</p>
+<h3 id="single-pass-hashing">Single-Pass Hashing</h3>
+<p>Go&rsquo;s <code>io.MultiWriter</code> is the key to fast hashing. It lets you write to multiple <code>io.Writer</code> objects simultaneously — so one pass through the file computes all three hashes at once:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#66d9ef">func</span> <span style="color:#a6e22e">Hash</span>(<span style="color:#a6e22e">r</span> <span style="color:#a6e22e">io</span>.<span style="color:#a6e22e">Reader</span>) (<span style="color:#a6e22e">HashResult</span>, <span style="color:#66d9ef">error</span>) {
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">crc</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">crc32</span>.<span style="color:#a6e22e">NewIEEE</span>()
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">m</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">md5</span>.<span style="color:#a6e22e">New</span>()
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">s</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">sha1</span>.<span style="color:#a6e22e">New</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">multi</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">io</span>.<span style="color:#a6e22e">MultiWriter</span>(<span style="color:#a6e22e">crc</span>, <span style="color:#a6e22e">m</span>, <span style="color:#a6e22e">s</span>)
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">n</span>, <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">io</span>.<span style="color:#a6e22e">Copy</span>(<span style="color:#a6e22e">multi</span>, <span style="color:#a6e22e">r</span>)
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// ...</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>The key detail: we never load the full file into memory. A 600MB PS1 disc image hashes in under a second because <code>io.Copy</code> streams the data through the hash writers in chunks. This gives us ~500-700 MB/s on modern hardware.</p>
+<p>If you&rsquo;ve used <code>io.MultiWriter</code> before, it&rsquo;s probably for combining <code>os.Stdout</code> and a log file. Using it for parallel hashing is a neat trick — same API, different purpose.</p>
+<h3 id="magic-bytes-detection">Magic Bytes Detection</h3>
+<p>Sometimes you need to identify a ROM file before hashing it — for example, to determine which platform it belongs to. <strong>Magic bytes</strong> are specific byte sequences at fixed offsets in the file that act as a file-type signature:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#66d9ef">const</span> (
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">MagicNES</span>       = []<span style="color:#66d9ef">byte</span>{<span style="color:#ae81ff">0x4E</span>, <span style="color:#ae81ff">0x45</span>, <span style="color:#ae81ff">0x53</span>, <span style="color:#ae81ff">0x1A</span>} <span style="color:#75715e">// &#34;NES\x1A&#34;</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">MagicGBA</span>       = []<span style="color:#66d9ef">byte</span>{<span style="color:#ae81ff">0xEE</span>, <span style="color:#ae81ff">0x00</span>, <span style="color:#ae81ff">0x00</span>, <span style="color:#ae81ff">0xEA</span>} <span style="color:#75715e">// ARM branch instruction</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">MagicMegaDrive</span> = []byte(<span style="color:#e6db74">&#34;SEGA GENESIS&#34;</span>)          <span style="color:#75715e">// at offset 0x100</span>
+</span></span><span style="display:flex;"><span>)
+</span></span></code></pre></div><p>This is the same concept as the <code>#!</code> magic bytes at the start of shell scripts, or the <code>%PDF</code> header in PDF files. Every file format has its own signature — if you know where to look, you can identify the format without relying on the file extension.</p>
+<p>Not every system has reliable magic bytes though. CDI, ISO, and PS1 BIN files don&rsquo;t have consistent signatures. For those, you fall back on extension-based detection or folder context (e.g., &ldquo;everything in the <code>/PS1/</code> folder is probably a PlayStation disc image&rdquo;).</p>
+<h2 id="using-rom-lookup">Using rom-lookup</h2>
+<h3 id="cli-usage">CLI Usage</h3>
+<p>First, download the database (one-time setup):</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>romlookup update
+</span></span></code></pre></div><p>This fetches ~100MB of DAT files from No-Intro, Redump, and TOSEC. Subsequent updates are fast because it only downloads files that changed (more on that below).</p>
+<p>Then scan a ROM:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>$ romlookup scan GBA/001<span style="color:#ae81ff">\ </span>Golden<span style="color:#ae81ff">\ </span>Sun.gba
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">[</span>no-intro<span style="color:#f92672">]</span> Golden Sun <span style="color:#f92672">(</span>USA, Europe<span style="color:#f92672">)</span>
+</span></span><span style="display:flex;"><span>    Region:   USA, Europe
+</span></span><span style="display:flex;"><span>    Size:     16,777,216 bytes
+</span></span><span style="display:flex;"><span>    CRC32:    DBEF116C
+</span></span></code></pre></div><p>Or scan an entire directory:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>$ romlookup scan-dir GBA/
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  ✓ <span style="color:#ae81ff">001</span> Golden Sun.gba         → Golden Sun <span style="color:#f92672">(</span>USA, Europe<span style="color:#f92672">)</span>
+</span></span><span style="display:flex;"><span>  ✓ <span style="color:#ae81ff">002</span> Tekken Advance.gba     → Tekken Advance <span style="color:#f92672">(</span>USA, Europe<span style="color:#f92672">)</span>
+</span></span><span style="display:flex;"><span>  ✗ <span style="color:#ae81ff">003</span> Bootleg Special.gba    ← not in database
+</span></span><span style="display:flex;"><span>  ...
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  Found <span style="color:#ae81ff">953</span> files, <span style="color:#ae81ff">941</span> identified, <span style="color:#ae81ff">12</span> unrecognized.
+</span></span></code></pre></div><p>The <code>verify</code> command shows what needs attention:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>$ romlookup verify GBA/
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  Verified: 941/953 ROMs match database
+</span></span><span style="display:flex;"><span>  Unknown: <span style="color:#ae81ff">12</span> ROMs
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  Unknown ROMs <span style="color:#f92672">(</span>not in database<span style="color:#f92672">)</span>:
+</span></span><span style="display:flex;"><span>  ? Bootleg Special.gba
+</span></span><span style="display:flex;"><span>  ? Hack Rom <span style="color:#f92672">(</span>Unl<span style="color:#f92672">)</span>.gba
+</span></span><span style="display:flex;"><span>  ...
+</span></span></code></pre></div><h3 id="library-usage">Library Usage</h3>
+<p>For Go programs, the library provides a clean API:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#f92672">import</span> (
+</span></span><span style="display:flex;"><span>    <span style="color:#e6db74">&#34;github.com/rohmanhakim/rom-lookup/pkg/romlookup&#34;</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#e6db74">&#34;github.com/rohmanhakim/rom-lookup/pkg/romlookup/hash&#34;</span>
+</span></span><span style="display:flex;"><span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">// Load the database into memory</span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">index</span>, <span style="color:#a6e22e">_</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">romlookup</span>.<span style="color:#a6e22e">LoadDirMulti</span>(<span style="color:#e6db74">&#34;~/.config/romlookup/dat/&#34;</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">// Hash a ROM file</span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">result</span>, <span style="color:#a6e22e">_</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">hash</span>.<span style="color:#a6e22e">HashFile</span>(<span style="color:#e6db74">&#34;/path/to/rom.gba&#34;</span>)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">// Look up by CRC32</span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">game</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">index</span>.<span style="color:#a6e22e">Best</span>(<span style="color:#a6e22e">result</span>.<span style="color:#a6e22e">CRC32</span>)
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">if</span> <span style="color:#a6e22e">game</span> <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nil</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">fmt</span>.<span style="color:#a6e22e">Printf</span>(<span style="color:#e6db74">&#34;%s [%s]\n&#34;</span>, <span style="color:#a6e22e">game</span>.<span style="color:#a6e22e">Name</span>, <span style="color:#a6e22e">game</span>.<span style="color:#a6e22e">ROM</span>.<span style="color:#a6e22e">CRC32</span>)
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// Output: Golden Sun (USA, Europe) [DBEF116C]</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>The library is split into focused packages:</p>
+<table>
+	<thead>
+			<tr>
+					<th>Package</th>
+					<th>Purpose</th>
+			</tr>
+	</thead>
+	<tbody>
+			<tr>
+					<td><code>dat</code></td>
+					<td>Parse DAT files, build hash index</td>
+			</tr>
+			<tr>
+					<td><code>hash</code></td>
+					<td>Compute CRC32, MD5, SHA1</td>
+			</tr>
+			<tr>
+					<td><code>platform</code></td>
+					<td>Detect system from extension/magic bytes</td>
+			</tr>
+	</tbody>
+</table>
+<h2 id="engineering-decisions">Engineering Decisions</h2>
+<h3 id="sha-based-version-tracking">SHA-Based Version Tracking</h3>
+<p>The DAT files are large (~100MB total). Re-downloading everything on every run would be wasteful. Instead, I track the SHA hash of each file on GitHub:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#66d9ef">type</span> <span style="color:#a6e22e">Metadata</span> <span style="color:#66d9ef">struct</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">Sources</span> <span style="color:#66d9ef">map</span>[<span style="color:#66d9ef">string</span>]<span style="color:#66d9ef">map</span>[<span style="color:#66d9ef">string</span>]<span style="color:#66d9ef">string</span> <span style="color:#e6db74">`json:&#34;sources&#34;`</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// sources[&#34;no-intro&#34;][&#34;Nintendo - Game Boy Advance.dat&#34;] = &#34;77a022f...&#34;</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>On update, the tool:</p>
+<ol>
+<li>Fetches the GitHub API to get current file SHAs</li>
+<li>Compares with the local <code>sha.json</code></li>
+<li>Downloads only files where the SHA changed</li>
+</ol>
+<p>First update takes ~60s. Subsequent updates take less than a second.</p>
+<h3 id="caching-and-read-only-systems">Caching and Read-Only Systems</h3>
+<p>The CLI downloads ~100MB of DAT files on first run, stored locally at <code>~/.config/romlookup/dat/</code>. On subsequent runs, it checks GitHub for changes and only re-downloads modified files.</p>
+<p>But the <em>library</em> doesn&rsquo;t handle caching at all. This was a deliberate design decision. The library is meant to be embedded in different environments:</p>
+<ul>
+<li>Desktop applications (writable cache)</li>
+<li>Docker containers (read-only filesystem)</li>
+<li>Web servers (no local storage)</li>
+<li>Embedded devices (limited storage)</li>
+</ul>
+<p>Instead of forcing a cache strategy, the library lets the client decide where the data comes from:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#75715e">// Client provides the data source</span>
+</span></span><span style="display:flex;"><span><span style="color:#a6e22e">index</span>, <span style="color:#a6e22e">_</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">dat</span>.<span style="color:#a6e22e">LoadDirMulti</span>(<span style="color:#e6db74">&#34;/path/to/dat/files&#34;</span>)
+</span></span></code></pre></div><p>For a Docker deployment, you can bake the DAT files into the image at build time:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-dockerfile" data-lang="dockerfile"><span style="display:flex;"><span><span style="color:#75715e"># Build stage: download DATs</span><span style="color:#960050;background-color:#1e0010">
+</span></span></span><span style="display:flex;"><span><span style="color:#66d9ef">FROM</span> <span style="color:#e6db74">golang:1.22</span> <span style="color:#66d9ef">AS</span> <span style="color:#e6db74">builder</span><span style="color:#960050;background-color:#1e0010">
+</span></span></span><span style="display:flex;"><span><span style="color:#66d9ef">RUN</span> romlookup update<span style="color:#960050;background-color:#1e0010">
+</span></span></span><span style="display:flex;"><span><span style="color:#960050;background-color:#1e0010">
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"># Runtime stage: read-only</span><span style="color:#960050;background-color:#1e0010">
+</span></span></span><span style="display:flex;"><span><span style="color:#66d9ef">FROM</span> <span style="color:#e6db74">gcr.io/distroless/static</span><span style="color:#960050;background-color:#1e0010">
+</span></span></span><span style="display:flex;"><span><span style="color:#66d9ef">COPY</span> --from<span style="color:#f92672">=</span>builder /root/.config/romlookup/dat/ /data/dat/<span style="color:#960050;background-color:#1e0010">
+</span></span></span><span style="display:flex;"><span><span style="color:#66d9ef">ENTRYPOINT</span> [<span style="color:#e6db74">&#34;/romlookup&#34;</span>, <span style="color:#e6db74">&#34;--dat-dir&#34;</span>, <span style="color:#e6db74">&#34;/data/dat/&#34;</span>]<span style="color:#960050;background-color:#1e0010">
+</span></span></span></code></pre></div><p>The CLI handles caching because it&rsquo;s a concrete application with a specific use case. The library stays flexible for other contexts.</p>
+<h2 id="what-i-learned">What I Learned</h2>
+<h3 id="iomultiwriter-is-underrated">io.MultiWriter is underrated</h3>
+<p>Most developers know it for combining writers, but using it to compute multiple hashes in a single pass is elegant and efficient. One <code>io.Copy</code>, three hashes, no extra allocations.</p>
+<h3 id="typed-errors-make-error-handling-clean">Typed errors make error handling clean</h3>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#66d9ef">var</span> <span style="color:#a6e22e">pe</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">dat</span>.<span style="color:#a6e22e">ParseError</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">if</span> <span style="color:#a6e22e">errors</span>.<span style="color:#a6e22e">As</span>(<span style="color:#a6e22e">err</span>, <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">pe</span>) {
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">fmt</span>.<span style="color:#a6e22e">Println</span>(<span style="color:#a6e22e">pe</span>.<span style="color:#a6e22e">File</span>, <span style="color:#a6e22e">pe</span>.<span style="color:#a6e22e">Msg</span>)
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>Instead of string-matching error messages, callers can handle specific failure modes with type assertions. This pattern is worth reaching for whenever a library has distinct error categories.</p>
+<h3 id="fuzz-testing-catches-parser-bugs">Fuzz testing catches parser bugs</h3>
+<p>Adding <code>FuzzParse</code> found edge cases I never thought of:</p>
+<ul>
+<li><code>&quot;game()&quot;</code> — empty game block</li>
+<li><code>&quot;()()&quot;</code> — nested empty parentheses</li>
+<li>Unterminated strings and blocks</li>
+</ul>
+<p>The parser never panics now, regardless of input. If you&rsquo;re writing a parser for any custom format, fuzz it early — Go&rsquo;s built-in fuzzing support (<code>go test -fuzz</code>) makes this almost effortless.</p>
+<h2 id="results">Results</h2>
+<p>I scanned my RG CubeXX&rsquo;s ROM collection:</p>
+<table>
+	<thead>
+			<tr>
+					<th>System</th>
+					<th>Total</th>
+					<th>Identified</th>
+					<th>Match Rate</th>
+			</tr>
+	</thead>
+	<tbody>
+			<tr>
+					<td>Game Boy</td>
+					<td>729</td>
+					<td>709</td>
+					<td>97%</td>
+			</tr>
+			<tr>
+					<td>Mega Drive</td>
+					<td>649</td>
+					<td>603</td>
+					<td>93%</td>
+			</tr>
+			<tr>
+					<td>Game Boy Advance</td>
+					<td>952</td>
+					<td>66</td>
+					<td>7%</td>
+			</tr>
+	</tbody>
+</table>
+<p>The GBA match rate was surprisingly low. Many ROMs appear to be from different dump sources or modified versions — the file bytes don&rsquo;t match any known-good dump in No-Intro. This is actually useful information: it tells me exactly which GBA ROMs need to be replaced for RetroAchievements compatibility, rather than guessing which ones are &ldquo;wrong.&rdquo;</p>
+<h2 id="whats-next">What&rsquo;s Next</h2>
+<ul>
+<li>Better GBA ROM detection (handling different dump sources and versions)</li>
+<li>Direct RetroAchievements integration (checking compatibility automatically)</li>
+<li>ROM renaming based on audit results</li>
+</ul>
+<p>The project is open source: <a href="https://github.com/rohmanhakim/rom-lookup">github.com/rohmanhakim/rom-lookup</a></p>
+
+  </article>
+  <nav id="mini-toc" aria-label="Table of contents">
+    
+  </nav>
+  <script>
+    (function () {
+      const toc = document.getElementById('mini-toc');
+      if (!toc) return;
+
+      
+      const headings = Array.from(
+        document.querySelectorAll('article h2, article h3')
+      );
+
+      if (headings.length === 0) return;
+
+      
+      headings.forEach((h) => {
+        
+        if (!h.id) {
+          h.id = h.textContent.trim()
+            .toLowerCase()
+            .replace(/[^\w\s-]/g, '')
+            .replace(/\s+/g, '-');
+        }
+
+        const a = document.createElement('a');
+        a.href = '#' + h.id;
+        a.textContent = h.textContent;
+        
+        if (h.tagName === 'H3') a.style.paddingLeft = '1rem';
+        toc.appendChild(a);
+      });
+
+      
+      const links = Array.from(toc.querySelectorAll('a'));
+
+      function onScroll() {
+        let current = headings[0];
+        for (const h of headings) {
+          if (h.getBoundingClientRect().top <= 120) {
+            current = h;
+          }
+        }
+        links.forEach((a) => {
+          a.classList.toggle('active', a.getAttribute('href') === '#' + current.id);
+        });
+      }
+
+      window.addEventListener('scroll', onScroll, { passive: true });
+      onScroll(); 
+    })();
+  </script>
+</main>
+
+<div class="comment">
+  <script src="https://utteranc.es/client.js" repo="rohmanhakim/rohmanhakim.github.io" issue-term="pathname"
+    theme="github-light" crossorigin="anonymous" async>
+    </script>
+</div>
+
+
+  <footer>
+  <script>
+  const btnSwitchTheme = document.getElementById("btn-switch-theme")
+
+  function getTheme() {
+    const cookies = Object.fromEntries(
+      document.cookie.split("; ").map(c => c.split("="))
+    );
+    return cookies.theme || "light";
+  }
+
+  function invertTheme(theme) {
+    return theme == "light" ? "dark" : "light"
+  }
+
+  function applyTheme(toTheme) {
+    btnSwitchTheme.textContent = "Switch to " + invertTheme(toTheme) + " theme"
+    document.querySelector("html").style = toTheme == "dark" ? "filter: invert(1);" : ""
+    neuralizeChildrenColor("img", toTheme)
+    neuralizeChildrenColor("button", toTheme)
+    neuralizeChildrenColor(".resume-download-button", toTheme)
+    neuralizeChildrenColor(".highlight", toTheme)
+  }
+
+  function neuralizeChildrenColor(child, toTheme) {
+    document.querySelectorAll(child).forEach(el => {
+      el.style = toTheme == "dark" ? "filter: invert(1);" : ""
+    })
+  }
+
+  btnSwitchTheme.addEventListener("click", (event) => {
+    const theme = getTheme()
+    const newTheme = invertTheme(theme)
+    document.cookie = "theme=" + newTheme + ";path=/"
+    applyTheme(newTheme)
+  })
+
+  applyTheme(getTheme())
+</script>
+<div class="footer-container">
+  <p>Copyright © 2026 <a href="/">Muhammad Arif Rohman Hakim</a></p>
+  <ul>
+    <li>
+      <a href="https://www.linkedin.com/in/rohmanhakim/">LinkedIn</a>
+    </li>
+    <li>
+      <a href="https://github.com/rohmanhakim/">GitHub</a>
+    </li>
+    <li>
+      <a href="/about">About</a>
+    </li>
+    <li>
+      <a href="/index.xml" title="RSS Feed">RSS</a>
+    </li>
+  </ul>
+</div>
+  
+  </footer>
+  </body>
+</html>

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+	<channel>
+		<title>Retro-Gaming on Arif&#39;s Homepage</title>
+		<link>https://arifrohman.com/tags/retro-gaming/</link>
+		<description>Recent content in Retro-Gaming on Arif&#39;s Homepage</description>
+		<generator>Hugo</generator>
+		<language>en-us</language>
+		
+		
+		
+		
+			<lastBuildDate>Sun, 06 Sep 2026 00:00:00 +0000</lastBuildDate>
+		
+			<atom:link href="https://arifrohman.com/tags/retro-gaming/index.xml" rel="self" type="application/rss+xml" />
+			<item>
+				<title>Auditing Retro ROMs with Go: Building a Hash-Based Identification Tool</title>
+				<link>https://arifrohman.com/post/auditing-retro-roms-with-go/</link>
+				<pubDate>Sun, 06 Sep 2026 00:00:00 +0000</pubDate>
+				<guid>https://arifrohman.com/post/auditing-retro-roms-with-go/</guid>
+				<description>How I built a Go tool to audit my Retro handheld&amp;rsquo;s ROM collection using content hashing and DAT databases.</description>
+			</item>
+	</channel>
+</rss>
