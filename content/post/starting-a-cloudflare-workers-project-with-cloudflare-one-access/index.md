@@ -288,9 +288,9 @@ curl -s -H "Authorization: Bearer $TOKEN" \
 
 In the new Cloudflare dashboard: **Protect & connect → Zero Trust → Access controls → Applications → Create new application → Self-hosted**:
 
-![](./images/0001.png)
+[![](images/0001.avif)](images/0001.avif)
 
-![](./images/0002.png)
+[![](images/0002.avif)](images/0002.avif)
 
 | Field | Value |
 |---|---|
